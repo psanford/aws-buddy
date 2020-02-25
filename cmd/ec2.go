@@ -50,8 +50,9 @@ func ec2ListAction(cmd *cobra.Command, args []string) {
 				az := *inst.Placement.AvailabilityZone
 
 				var (
-					privateIPs []string
-					publicIPs  []string
+					privateIPs     []string
+					publicIPs      []string
+					securityGroups []string
 				)
 
 				for _, iface := range inst.NetworkInterfaces {
@@ -63,7 +64,11 @@ func ec2ListAction(cmd *cobra.Command, args []string) {
 					}
 				}
 
-				fmt.Printf("%19s %35.35s %5.5s %4.4s %15s %15s\n", id, name, state, shortAZ(az), strings.Join(privateIPs, ","), strings.Join(publicIPs, ","))
+				for _, sg := range inst.SecurityGroups {
+					securityGroups = append(securityGroups, *sg.GroupName)
+				}
+
+				fmt.Printf("%19s %35.35s %5.5s %4.4s %15s %15s %s\n", id, name, state, shortAZ(az), strings.Join(privateIPs, ","), strings.Join(publicIPs, ","), strings.Join(securityGroups, ","))
 			}
 		}
 		return true
