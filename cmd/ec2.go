@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -17,6 +18,7 @@ func ec2Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(ec2ListCommand())
+	cmd.AddCommand(securityGroupCommand())
 	return &cmd
 }
 
@@ -33,11 +35,11 @@ func ec2ListCommand() *cobra.Command {
 func ec2ListAction(cmd *cobra.Command, args []string) {
 	sess, err := session.NewSession(&aws.Config{Region: &region})
 	if err != nil {
-		panic(err)
+		log.Fatalf("AWS NewSession error: %s", err)
 	}
 	svc := ec2.New(sess)
 
-	svc.DescribeInstancesPages(nil, func(output *ec2.DescribeInstancesOutput, lastPage bool) bool {
+	err = svc.DescribeInstancesPages(nil, func(output *ec2.DescribeInstancesOutput, lastPage bool) bool {
 		for _, res := range output.Reservations {
 			for _, inst := range res.Instances {
 				id := *inst.InstanceId
@@ -73,6 +75,9 @@ func ec2ListAction(cmd *cobra.Command, args []string) {
 		}
 		return true
 	})
+	if err != nil {
+		log.Fatalf("DescribeInstance error: %s", err)
+	}
 }
 
 func shortAZ(fullAZ string) string {
