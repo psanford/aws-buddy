@@ -42,8 +42,9 @@ func ec2ListAction(cmd *cobra.Command, args []string) {
 	err = svc.DescribeInstancesPages(nil, func(output *ec2.DescribeInstancesOutput, lastPage bool) bool {
 		for _, res := range output.Reservations {
 			for _, inst := range res.Instances {
-				id := *inst.InstanceId
-				state := *inst.State.Name
+				instType := shortType(*inst.InstanceType)
+				state := shortState(*inst.State.Name)
+
 				tags := make(map[string]string)
 				for _, t := range inst.Tags {
 					tags[*t.Key] = *t.Value
@@ -70,7 +71,7 @@ func ec2ListAction(cmd *cobra.Command, args []string) {
 					securityGroups = append(securityGroups, *sg.GroupName)
 				}
 
-				fmt.Printf("%19s %35.35s %5.5s %4.4s %15s %15s %s\n", id, name, state, shortAZ(az), strings.Join(privateIPs, ","), strings.Join(publicIPs, ","), strings.Join(securityGroups, ","))
+				fmt.Printf("%-35.35s %6.6s %4.4s %3.3s %15s %15s %s\n", name, instType, shortAZ(az), state, strings.Join(privateIPs, ","), strings.Join(publicIPs, ","), strings.Join(securityGroups, ","))
 			}
 		}
 		return true
@@ -90,4 +91,28 @@ func shortAZ(fullAZ string) string {
 		parts[i] = part[:1]
 	}
 	return strings.Join(parts, "")
+}
+
+func shortState(state string) string {
+	if state == "stopping" {
+		state = "sin"
+	} else if state == "stopped" {
+		state = "sed"
+	} else {
+		state = state[:3]
+	}
+	return state
+}
+
+var typeReplacer = strings.NewReplacer(
+	"large", "l",
+	"medium", "m",
+	"metal", "⛁",
+	"micro", "μ",
+	"nano", "n",
+	"small", "s",
+)
+
+func shortType(fullType string) string {
+	return typeReplacer.Replace(fullType)
 }
