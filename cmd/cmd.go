@@ -27,6 +27,7 @@ func Execute() error {
 
 	rootCmd.AddCommand(ec2Command())
 	rootCmd.AddCommand(orgCommand())
+	rootCmd.AddCommand(route53Command())
 	rootCmd.AddCommand(completionCommand())
 
 	return rootCmd.Execute()
