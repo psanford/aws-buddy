@@ -13,6 +13,10 @@ var rootCmd = &cobra.Command{
 	Short: "AWS tools",
 }
 
+var (
+	jsonOutput bool
+)
+
 func Execute() error {
 	if os.Getenv("AWS_DEFAULT_REGION") != "" {
 		region = os.Getenv("AWS_DEFAULT_REGION")

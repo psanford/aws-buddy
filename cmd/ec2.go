@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -29,6 +31,8 @@ func ec2ListCommand() *cobra.Command {
 		Run:   ec2ListAction,
 	}
 
+	cmd.Flags().BoolVarP(&jsonOutput, "json", "", false, "Show raw json ouput")
+
 	return &cmd
 }
 
@@ -39,39 +43,47 @@ func ec2ListAction(cmd *cobra.Command, args []string) {
 	}
 	svc := ec2.New(sess)
 
+	jsonOut := json.NewEncoder(os.Stdout)
+	jsonOut.SetIndent("", "  ")
+
 	err = svc.DescribeInstancesPages(nil, func(output *ec2.DescribeInstancesOutput, lastPage bool) bool {
 		for _, res := range output.Reservations {
 			for _, inst := range res.Instances {
-				instType := shortType(*inst.InstanceType)
-				state := shortState(*inst.State.Name)
+				if jsonOutput {
+					jsonOut.Encode(inst)
 
-				tags := make(map[string]string)
-				for _, t := range inst.Tags {
-					tags[*t.Key] = *t.Value
-				}
-				name := tags["Name"]
-				az := *inst.Placement.AvailabilityZone
+				} else {
+					instType := shortType(*inst.InstanceType)
+					state := shortState(*inst.State.Name)
 
-				var (
-					privateIPs     []string
-					publicIPs      []string
-					securityGroups []string
-				)
+					tags := make(map[string]string)
+					for _, t := range inst.Tags {
+						tags[*t.Key] = *t.Value
+					}
+					name := tags["Name"]
+					az := *inst.Placement.AvailabilityZone
 
-				for _, iface := range inst.NetworkInterfaces {
-					for _, privIP := range iface.PrivateIpAddresses {
-						privateIPs = append(privateIPs, *privIP.PrivateIpAddress)
-						if privIP.Association != nil {
-							publicIPs = append(publicIPs, *privIP.Association.PublicIp)
+					var (
+						privateIPs     []string
+						publicIPs      []string
+						securityGroups []string
+					)
+
+					for _, iface := range inst.NetworkInterfaces {
+						for _, privIP := range iface.PrivateIpAddresses {
+							privateIPs = append(privateIPs, *privIP.PrivateIpAddress)
+							if privIP.Association != nil {
+								publicIPs = append(publicIPs, *privIP.Association.PublicIp)
+							}
 						}
 					}
-				}
 
-				for _, sg := range inst.SecurityGroups {
-					securityGroups = append(securityGroups, *sg.GroupName)
-				}
+					for _, sg := range inst.SecurityGroups {
+						securityGroups = append(securityGroups, *sg.GroupName)
+					}
 
-				fmt.Printf("%-35.35s %6.6s %4.4s %3.3s %15s %15s %s\n", name, instType, shortAZ(az), state, strings.Join(privateIPs, ","), strings.Join(publicIPs, ","), strings.Join(securityGroups, ","))
+					fmt.Printf("%-35.35s %6.6s %4.4s %3.3s %15s %15s %s\n", name, instType, shortAZ(az), state, strings.Join(privateIPs, ","), strings.Join(publicIPs, ","), strings.Join(securityGroups, ","))
+				}
 			}
 		}
 		return true
