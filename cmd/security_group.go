@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/spf13/cobra"
 )
@@ -43,12 +42,8 @@ func sgShowCommand() *cobra.Command {
 }
 
 func sgListAction(cmd *cobra.Command, args []string) {
-	sess, err := session.NewSession(&aws.Config{Region: &region})
-	if err != nil {
-		log.Fatalf("AWS NewSession error: %s", err)
-	}
-	svc := ec2.New(sess)
-	err = svc.DescribeSecurityGroupsPages(nil, func(output *ec2.DescribeSecurityGroupsOutput, lastPage bool) bool {
+	svc := ec2.New(session())
+	err := svc.DescribeSecurityGroupsPages(nil, func(output *ec2.DescribeSecurityGroupsOutput, lastPage bool) bool {
 		for _, sg := range output.SecurityGroups {
 			id := str(sg.GroupId)
 			name := str(sg.GroupName)
@@ -73,11 +68,7 @@ func sgShowAction(cmd *cobra.Command, args []string) {
 		log.Fatalf("Missing required sg-id argument")
 	}
 
-	sess, err := session.NewSession(&aws.Config{Region: &region})
-	if err != nil {
-		log.Fatalf("AWS NewSession error: %s", err)
-	}
-	svc := ec2.New(sess)
+	svc := ec2.New(session())
 
 	groups := findSGs(svc, "group-id", args[0])
 	if len(groups) == 0 {

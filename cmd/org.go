@@ -6,8 +6,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/organizations"
 	"github.com/spf13/cobra"
 )
@@ -22,7 +20,6 @@ func orgCommand() *cobra.Command {
 
 	return &cmd
 }
-
 func orgListAccountsCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "list",
@@ -36,16 +33,12 @@ func orgListAccountsCommand() *cobra.Command {
 }
 
 func orgListAccountsAction(cmd *cobra.Command, args []string) {
-	sess, err := session.NewSession(&aws.Config{Region: &region})
-	if err != nil {
-		log.Fatalf("AWS NewSession error: %s", err)
-	}
-	svc := organizations.New(sess)
+	svc := organizations.New(session())
 
 	jsonOut := json.NewEncoder(os.Stdout)
 	jsonOut.SetIndent("", "  ")
 
-	err = svc.ListAccountsPages(nil, func(output *organizations.ListAccountsOutput, lastPage bool) bool {
+	err := svc.ListAccountsPages(nil, func(output *organizations.ListAccountsOutput, lastPage bool) bool {
 		for _, account := range output.Accounts {
 			if jsonOutput {
 				jsonOut.Encode(account)

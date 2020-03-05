@@ -7,8 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/spf13/cobra"
 )
@@ -37,16 +35,12 @@ func ec2ListCommand() *cobra.Command {
 }
 
 func ec2ListAction(cmd *cobra.Command, args []string) {
-	sess, err := session.NewSession(&aws.Config{Region: &region})
-	if err != nil {
-		log.Fatalf("AWS NewSession error: %s", err)
-	}
-	svc := ec2.New(sess)
+	svc := ec2.New(session())
 
 	jsonOut := json.NewEncoder(os.Stdout)
 	jsonOut.SetIndent("", "  ")
 
-	err = svc.DescribeInstancesPages(nil, func(output *ec2.DescribeInstancesOutput, lastPage bool) bool {
+	err := svc.DescribeInstancesPages(nil, func(output *ec2.DescribeInstancesOutput, lastPage bool) bool {
 		for _, res := range output.Reservations {
 			for _, inst := range res.Instances {
 				if jsonOutput {

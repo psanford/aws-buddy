@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"log"
 	"os"
 
+	"github.com/aws/aws-sdk-go/aws"
+	awssession "github.com/aws/aws-sdk-go/aws/session"
 	"github.com/spf13/cobra"
 )
 
@@ -48,4 +51,13 @@ To configure your bash shell to load completions for each session add to your ba
 	}
 
 	return cmd
+}
+
+func session() *awssession.Session {
+	sess, err := awssession.NewSession(&aws.Config{Region: &region})
+	if err != nil {
+		log.Fatalf("AWS NewSession error: %s", err)
+	}
+
+	return sess
 }
