@@ -23,6 +23,7 @@ func Execute() error {
 	}
 
 	rootCmd.AddCommand(ec2Command())
+	rootCmd.AddCommand(orgCommand())
 	rootCmd.AddCommand(completionCommand())
 
 	return rootCmd.Execute()
