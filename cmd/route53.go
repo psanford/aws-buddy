@@ -50,8 +50,29 @@ func route53ListRecords(cmd *cobra.Command, args []string) {
 					if jsonOutput {
 						jsonOut.Encode(rrs)
 					} else {
+						var (
+							recordName string
+							recordType string
+							ttl        int64
+						)
+
+						if rrs.Name != nil {
+							recordName = *rrs.Name
+						}
+
+						if rrs.Type != nil {
+							recordType = *rrs.Type
+						}
+
+						if rrs.TTL != nil {
+							ttl = *rrs.TTL
+						}
+
 						for _, val := range rrs.ResourceRecords {
-							fmt.Printf("%-60.60s %5.5s %6d %s\n", *rrs.Name, *rrs.Type, *rrs.TTL, *val.Value)
+							if val.Value != nil {
+								fmt.Printf("%-60.60s %5.5s %6d %s\n", recordName, recordType, ttl, *val.Value)
+							}
+
 						}
 					}
 				}
