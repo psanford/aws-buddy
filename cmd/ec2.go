@@ -30,6 +30,7 @@ func ec2ListCommand() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVarP(&jsonOutput, "json", "", false, "Show raw json ouput")
+	cmd.Flags().BoolVarP(&truncateFields, "truncate", "", true, "Trucate fields")
 
 	return &cmd
 }
@@ -76,7 +77,11 @@ func ec2ListAction(cmd *cobra.Command, args []string) {
 						securityGroups = append(securityGroups, *sg.GroupName)
 					}
 
-					fmt.Printf("%-35.35s %6.6s %4.4s %3.3s %15s %15s %s\n", name, instType, shortAZ(az), state, strings.Join(privateIPs, ","), strings.Join(publicIPs, ","), strings.Join(securityGroups, ","))
+					formatStr := "%-35.35s %6.6s %4.4s %3.3s %15s %15s %s\n"
+					if !truncateFields {
+						formatStr = "%s %s %s %s %s %s %s\n"
+					}
+					fmt.Printf(formatStr, name, instType, shortAZ(az), state, strings.Join(privateIPs, ","), strings.Join(publicIPs, ","), strings.Join(securityGroups, ","))
 				}
 			}
 		}

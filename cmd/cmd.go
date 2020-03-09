@@ -17,7 +17,9 @@ var rootCmd = &cobra.Command{
 }
 
 var (
-	jsonOutput bool
+	jsonOutput     bool
+	truncateFields bool
+	assumeRoleName string
 )
 
 func Execute() error {
