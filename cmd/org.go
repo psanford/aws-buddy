@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -20,7 +22,7 @@ func orgCommand() *cobra.Command {
 	}
 
 	cmd.AddCommand(orgListAccountsCommand())
-	cmd.AddCommand(orgEachEC2ListAccountCommand())
+	cmd.AddCommand(orgEachAccountCommand())
 
 	return &cmd
 }
@@ -37,10 +39,10 @@ func orgListAccountsCommand() *cobra.Command {
 	return &cmd
 }
 
-func orgEachEC2ListAccountCommand() *cobra.Command {
+func orgEachAccountCommand() *cobra.Command {
 	cmd := cobra.Command{
-		Use:   "each_ec2_list",
-		Short: "Run ec2 list against each account",
+		Use:   "each",
+		Short: "Run command against each account",
 		Run:   orgEachAccountAction,
 	}
 
@@ -73,19 +75,10 @@ func orgListAccountsAction(cmd *cobra.Command, args []string) {
 }
 
 func orgEachAccountAction(cmd *cobra.Command, args []string) {
-	var (
-		origAccessKeyID     = os.Getenv("AWS_ACCESS_KEY_ID")
-		origSecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
-		origSessionToken    = os.Getenv("AWS_SESSION_TOKEN")
-	)
-
-	resetEnv := func() {
-		os.Setenv("AWS_ACCESS_KEY_ID", origAccessKeyID)
-		os.Setenv("AWS_SECRET_ACCESS_KEY", origSecretAccessKey)
-		os.Setenv("AWS_SESSION_TOKEN", origSessionToken)
+	buddyPath, err := os.Executable()
+	if err != nil {
+		log.Fatalf("Failed to find my own executable: %s", err)
 	}
-
-	defer resetEnv()
 
 	svc := organizations.New(session())
 
@@ -106,8 +99,7 @@ func orgEachAccountAction(cmd *cobra.Command, args []string) {
 			if *account.Id == rootAccountID {
 				continue
 			}
-			fmt.Fprintf(os.Stderr, "%s %s\n", *account.Id, *account.Name)
-			resetEnv()
+			fmt.Fprintf(os.Stderr, "# Account %s %s\n", *account.Id, *account.Name)
 
 			roleARN := fmt.Sprintf("arn:aws:iam::%s:role/%s", *account.Id, assumeRoleName)
 			roleSessionName := fmt.Sprintf("%d", time.Now().UTC().UnixNano())
@@ -123,14 +115,23 @@ func orgEachAccountAction(cmd *cobra.Command, args []string) {
 				log.Fatalf("Assume role error: %s", err)
 			}
 
-			os.Setenv("AWS_ACCESS_KEY_ID", *resp.Credentials.AccessKeyId)
-			os.Setenv("AWS_SECRET_ACCESS_KEY", *resp.Credentials.SecretAccessKey)
-			os.Setenv("AWS_SESSION_TOKEN", *resp.Credentials.SessionToken)
+			cmd := exec.Command(buddyPath, args...)
+			cmd.Env = append(os.Environ(),
+				fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", *resp.Credentials.AccessKeyId),
+				fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", *resp.Credentials.SecretAccessKey),
+				fmt.Sprintf("AWS_SESSION_TOKEN=%s", *resp.Credentials.SessionToken),
+			)
 
-			ec2ListAction(nil, nil)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+
+			fmt.Fprintf(os.Stderr, "# Running %s %s\n", buddyPath, strings.Join(args, " "))
+			err = cmd.Run()
+			if err != nil {
+				log.Fatalf("Failed to execute cmd on account %s/%s: %s, cmd: %s %s", *account.Id, *account.Name, buddyPath, err, strings.Join(args, " "))
+			}
 		}
 
-		resetEnv()
 		return true
 	})
 
