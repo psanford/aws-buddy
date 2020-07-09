@@ -22,6 +22,7 @@ var (
 	assumeRoleName        string
 	startingMasterAccount string
 	filterFlag            string
+	daysFlag              int
 )
 
 func Execute() error {
@@ -32,6 +33,7 @@ func Execute() error {
 	rootCmd.AddCommand(ec2Command())
 	rootCmd.AddCommand(orgCommand())
 	rootCmd.AddCommand(route53Command())
+	rootCmd.AddCommand(costCommand())
 	rootCmd.AddCommand(completionCommand())
 
 	return rootCmd.Execute()
