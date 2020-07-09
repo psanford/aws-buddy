@@ -17,9 +17,11 @@ var rootCmd = &cobra.Command{
 }
 
 var (
-	jsonOutput     bool
-	truncateFields bool
-	assumeRoleName string
+	jsonOutput            bool
+	truncateFields        bool
+	assumeRoleName        string
+	startingMasterAccount string
+	filterFlag            string
 )
 
 func Execute() error {

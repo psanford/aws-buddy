@@ -31,6 +31,7 @@ func ec2ListCommand() *cobra.Command {
 
 	cmd.Flags().BoolVarP(&jsonOutput, "json", "", false, "Show raw json ouput")
 	cmd.Flags().BoolVarP(&truncateFields, "truncate", "", true, "Trucate fields")
+	cmd.Flags().StringVarP(&filterFlag, "filter", "f", "", "Filter results by name or id")
 
 	return &cmd
 }
@@ -44,18 +45,24 @@ func ec2ListAction(cmd *cobra.Command, args []string) {
 	err := svc.DescribeInstancesPages(nil, func(output *ec2.DescribeInstancesOutput, lastPage bool) bool {
 		for _, res := range output.Reservations {
 			for _, inst := range res.Instances {
+				tags := make(map[string]string)
+				for _, t := range inst.Tags {
+					tags[*t.Key] = *t.Value
+				}
+				name := tags["Name"]
+				if filterFlag != "" {
+					filterFlag = strings.ToLower(filterFlag)
+					if strings.Index(strings.ToLower(name), filterFlag) < 0 && strings.Index(*inst.InstanceId, filterFlag) < 0 {
+						continue
+					}
+				}
+
 				if jsonOutput {
 					jsonOut.Encode(inst)
-
 				} else {
 					instType := shortType(*inst.InstanceType)
 					state := shortState(*inst.State.Name)
 
-					tags := make(map[string]string)
-					for _, t := range inst.Tags {
-						tags[*t.Key] = *t.Value
-					}
-					name := tags["Name"]
 					az := *inst.Placement.AvailabilityZone
 
 					var (
