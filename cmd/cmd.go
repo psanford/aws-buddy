@@ -20,6 +20,8 @@ var (
 	jsonOutput            bool
 	truncateFields        bool
 	assumeRoleName        string
+	orgListFileName       string
+	externalCommand       string
 	startingMasterAccount string
 	filterFlag            string
 	daysFlag              int

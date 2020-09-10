@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -47,6 +48,8 @@ func orgEachAccountCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&assumeRoleName, "role", "", "", "Role name to assume in each account")
+	cmd.Flags().StringVarP(&orgListFileName, "org-list", "", "", "File with list of org ids (empty means use the current accounts org list)")
+	cmd.Flags().StringVarP(&externalCommand, "external-cmd", "", "", "External command to run instead of a buddy command")
 
 	return &cmd
 }
@@ -75,9 +78,19 @@ func orgListAccountsAction(cmd *cobra.Command, args []string) {
 }
 
 func orgEachAccountAction(cmd *cobra.Command, args []string) {
-	buddyPath, err := os.Executable()
-	if err != nil {
-		log.Fatalf("Failed to find my own executable: %s", err)
+	var cmdPath string
+	if externalCommand != "" {
+		p, err := exec.LookPath(externalCommand)
+		if err != nil {
+			log.Fatalf("Failed to find full path for cmd: %s %s", externalCommand, err)
+		}
+		cmdPath = p
+	} else {
+		buddyPath, err := os.Executable()
+		if err != nil {
+			log.Fatalf("Failed to find my own executable: %s", err)
+		}
+		cmdPath = buddyPath
 	}
 
 	svc := organizations.New(session())
@@ -94,48 +107,100 @@ func orgEachAccountAction(cmd *cobra.Command, args []string) {
 	}
 	rootAccountID := *ident.Account
 
-	err = svc.ListAccountsPages(nil, func(output *organizations.ListAccountsOutput, lastPage bool) bool {
-		for _, account := range output.Accounts {
-			if *account.Id == rootAccountID {
-				continue
-			}
-			fmt.Fprintf(os.Stderr, "# Account %s %s\n", *account.Id, *account.Name)
+	var orgIDs []orgInfo
 
-			roleARN := fmt.Sprintf("arn:aws:iam::%s:role/%s", *account.Id, assumeRoleName)
-			roleSessionName := fmt.Sprintf("%d", time.Now().UTC().UnixNano())
-
-			assumeRoleInput := &sts.AssumeRoleInput{
-				RoleArn:         aws.String(roleARN),
-				RoleSessionName: aws.String(roleSessionName),
-				DurationSeconds: aws.Int64(900),
-			}
-
-			resp, err := stsClient.AssumeRole(assumeRoleInput)
-			if err != nil {
-				log.Fatalf("Assume role error: %s", err)
-			}
-
-			cmd := exec.Command(buddyPath, args...)
-			cmd.Env = append(os.Environ(),
-				fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", *resp.Credentials.AccessKeyId),
-				fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", *resp.Credentials.SecretAccessKey),
-				fmt.Sprintf("AWS_SESSION_TOKEN=%s", *resp.Credentials.SessionToken),
-			)
-
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-
-			fmt.Fprintf(os.Stderr, "# Running %s %s\n", buddyPath, strings.Join(args, " "))
-			err = cmd.Run()
-			if err != nil {
-				log.Fatalf("Failed to execute cmd on account %s/%s: %s, cmd: %s %s", *account.Id, *account.Name, buddyPath, err, strings.Join(args, " "))
-			}
+	if orgListFileName != "" {
+		data, err := ioutil.ReadFile(orgListFileName)
+		if err != nil {
+			log.Fatalf("Read %s err: %s", orgListFileName, err)
 		}
 
-		return true
-	})
-
-	if err != nil {
-		log.Fatalf("ListAccounts error: %s", err)
+		lines := strings.Split(string(data), "\n")
+		for _, l := range lines {
+			fields := strings.Fields(l)
+			if len(fields) > 1 {
+				orgIDs = append(orgIDs, orgInfo{
+					id:   fields[0],
+					name: fields[1],
+				})
+			} else if len(fields) == 1 {
+				orgIDs = append(orgIDs, orgInfo{
+					id: fields[0],
+				})
+			}
+		}
+	} else {
+		err = svc.ListAccountsPages(nil, func(output *organizations.ListAccountsOutput, lastPage bool) bool {
+			for _, account := range output.Accounts {
+				if *account.Id == rootAccountID {
+					continue
+				}
+				orgIDs = append(orgIDs, orgInfo{
+					id:   *account.Id,
+					name: *account.Name,
+				})
+			}
+			return true
+		})
+		if err != nil {
+			log.Fatalf("ListAccount err: %s", err)
+		}
 	}
+
+	var errors []error
+
+	for _, orgInfo := range orgIDs {
+		fmt.Fprintf(os.Stderr, "# Account %s\n", orgInfo)
+
+		roleARN := fmt.Sprintf("arn:aws:iam::%s:role/%s", orgInfo.id, assumeRoleName)
+		roleSessionName := fmt.Sprintf("%d", time.Now().UTC().UnixNano())
+
+		assumeRoleInput := &sts.AssumeRoleInput{
+			RoleArn:         aws.String(roleARN),
+			RoleSessionName: aws.String(roleSessionName),
+			DurationSeconds: aws.Int64(900),
+		}
+
+		resp, err := stsClient.AssumeRole(assumeRoleInput)
+		if err != nil {
+			errors = append(errors, fmt.Errorf("Assume role error: %s", err))
+			log.Printf("Assume role error: %s", err)
+			continue
+		}
+
+		cmd := exec.Command(cmdPath, args...)
+		cmd.Env = append(os.Environ(),
+			fmt.Sprintf("AWS_ACCESS_KEY_ID=%s", *resp.Credentials.AccessKeyId),
+			fmt.Sprintf("AWS_SECRET_ACCESS_KEY=%s", *resp.Credentials.SecretAccessKey),
+			fmt.Sprintf("AWS_SESSION_TOKEN=%s", *resp.Credentials.SessionToken),
+		)
+
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		fmt.Fprintf(os.Stderr, "# Running %s %s\n", cmdPath, strings.Join(args, " "))
+		err = cmd.Run()
+		if err != nil {
+			fullErr := fmt.Errorf("Failed to execute cmd on account %s: %s cmd: %s %s", orgInfo, cmdPath, err, strings.Join(args, " "))
+			errors = append(errors, fullErr)
+			log.Print(fullErr)
+		}
+	}
+
+	if len(errors) > 0 {
+		log.Printf("Errors:")
+		for _, err := range errors {
+			log.Print(err)
+		}
+		os.Exit(1)
+	}
+}
+
+type orgInfo struct {
+	id   string
+	name string
+}
+
+func (i orgInfo) String() string {
+	return fmt.Sprintf("%s/%s", i.id, i.name)
 }
