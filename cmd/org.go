@@ -138,6 +138,7 @@ func orgEachAccountAction(cmd *cobra.Command, args []string) {
 				orgIDs = append(orgIDs, orgInfo{
 					id:   *account.Id,
 					name: *account.Name,
+					arn:  *account.Arn,
 				})
 			}
 			return true
@@ -150,9 +151,12 @@ func orgEachAccountAction(cmd *cobra.Command, args []string) {
 	var errors []error
 
 	for _, orgInfo := range orgIDs {
-		fmt.Fprintf(os.Stderr, "# Account %s\n", orgInfo)
+		fmt.Fprintf(os.Stderr, "# Account %s %s\n", orgInfo.arn, orgInfo)
 
-		roleARN := fmt.Sprintf("arn:aws:iam::%s:role/%s", orgInfo.id, assumeRoleName)
+		// get the correct arn prefix (for other aws partitions)
+		arnParts := strings.SplitN(orgInfo.arn, ":", 3)
+
+		roleARN := fmt.Sprintf("%s:%s:iam::%s:role/%s", arnParts[0], arnParts[1], orgInfo.id, assumeRoleName)
 		roleSessionName := fmt.Sprintf("%d", time.Now().UTC().UnixNano())
 
 		assumeRoleInput := &sts.AssumeRoleInput{
@@ -199,6 +203,7 @@ func orgEachAccountAction(cmd *cobra.Command, args []string) {
 type orgInfo struct {
 	id   string
 	name string
+	arn  string
 }
 
 func (i orgInfo) String() string {
