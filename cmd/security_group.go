@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -29,6 +31,8 @@ func sgListCommand() *cobra.Command {
 		Short: "list security groups",
 		Run:   sgListAction,
 	}
+	cmd.Flags().BoolVarP(&jsonOutput, "json", "", false, "Show raw json ouput")
+
 	return &cmd
 }
 
@@ -43,18 +47,26 @@ func sgShowCommand() *cobra.Command {
 
 func sgListAction(cmd *cobra.Command, args []string) {
 	svc := ec2.New(session())
+
+	jsonOut := json.NewEncoder(os.Stdout)
+	jsonOut.SetIndent("", "  ")
+
 	err := svc.DescribeSecurityGroupsPages(nil, func(output *ec2.DescribeSecurityGroupsOutput, lastPage bool) bool {
 		for _, sg := range output.SecurityGroups {
 			id := str(sg.GroupId)
 			name := str(sg.GroupName)
 			desc := str(sg.Description)
 
-			tags := make([]string, 0, len(sg.Tags))
-			for _, t := range sg.Tags {
-				tags = append(tags, fmt.Sprintf("%s:%q", *t.Key, *t.Value))
-			}
+			if jsonOutput {
+				jsonOut.Encode(sg)
+			} else {
+				tags := make([]string, 0, len(sg.Tags))
+				for _, t := range sg.Tags {
+					tags = append(tags, fmt.Sprintf("%s:%q", *t.Key, *t.Value))
+				}
 
-			fmt.Printf("%20s %-40s %q %s\n", id, name, desc, strings.Join(tags, ","))
+				fmt.Printf("%20s %-40s %q %s\n", id, name, desc, strings.Join(tags, ","))
+			}
 		}
 		return true
 	})
