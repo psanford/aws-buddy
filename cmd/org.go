@@ -118,14 +118,17 @@ func orgEachAccountAction(cmd *cobra.Command, args []string) {
 		lines := strings.Split(string(data), "\n")
 		for _, l := range lines {
 			fields := strings.Fields(l)
+
 			if len(fields) > 1 {
 				orgIDs = append(orgIDs, orgInfo{
 					id:   fields[0],
 					name: fields[1],
+					arn:  fmt.Sprintf("arn:aws:organizations::%s:", fields[0]),
 				})
 			} else if len(fields) == 1 {
 				orgIDs = append(orgIDs, orgInfo{
-					id: fields[0],
+					id:  fields[0],
+					arn: fmt.Sprintf("arn:aws:organizations::%s:", fields[0]),
 				})
 			}
 		}
