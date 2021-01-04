@@ -19,6 +19,7 @@ func ec2Command() *cobra.Command {
 
 	cmd.AddCommand(ec2ListCommand())
 	cmd.AddCommand(securityGroupCommand())
+	cmd.AddCommand(asgCommand())
 	return &cmd
 }
 
