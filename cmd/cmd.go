@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -69,4 +70,12 @@ func session() *awssession.Session {
 	}
 
 	return sess
+}
+
+func confirm(prompt string) bool {
+	fmt.Print(prompt)
+	var result string
+	fmt.Scanln(&result)
+
+	return result == "y" || result == "Y" || result == "yes" || result == "Yes"
 }
