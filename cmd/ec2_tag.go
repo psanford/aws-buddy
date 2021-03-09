@@ -97,7 +97,7 @@ func setTagAction(cmd *cobra.Command, args []string) {
 	fmt.Printf("%s (%s)\n\n", instanceID, instName)
 	fmt.Printf("tag %s: %s => %s\n\n", tagName, oldVal, newVal)
 
-	ok := confirm("Are you sure you want to make this change [yn]? ")
+	ok := confirm("Are you sure you want to make this change [yN]? ")
 	if !ok {
 		log.Fatalln("Aborting")
 	}
@@ -131,8 +131,8 @@ func tagRemoveCommand() *cobra.Command {
 }
 
 func removeTagAction(cmd *cobra.Command, args []string) {
-	if len(args) < 3 {
-		log.Fatal("Missing required <instance-id> <tag-name> <tag-value>")
+	if len(args) < 2 {
+		log.Fatal("Missing required <instance-id> <tag-name>")
 	}
 
 	instanceID := args[0]
@@ -162,7 +162,7 @@ func removeTagAction(cmd *cobra.Command, args []string) {
 	}
 	fmt.Printf("tag %s: %s => (deleted)\n\n", tagName, *oldVal)
 
-	ok := confirm("Are you sure you want to make this change [yn]? ")
+	ok := confirm("Are you sure you want to make this change [yN]? ")
 	if !ok {
 		log.Fatalln("Aborting")
 	}

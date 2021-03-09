@@ -19,6 +19,7 @@ var rootCmd = &cobra.Command{
 
 var (
 	jsonOutput            bool
+	queryByName           bool
 	truncateFields        bool
 	assumeRoleName        string
 	orgListFileName       string

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -19,6 +20,7 @@ func ec2Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(ec2ListCommand())
+	cmd.AddCommand(ec2ShowCommand())
 	cmd.AddCommand(securityGroupCommand())
 	cmd.AddCommand(asgCommand())
 	cmd.AddCommand(tagCommands())
@@ -40,12 +42,29 @@ func ec2ListCommand() *cobra.Command {
 }
 
 func ec2ListAction(cmd *cobra.Command, args []string) {
+	showInstances(nil)
+}
+
+func ec2ShowCommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "show <instance-id>",
+		Short: "Show Instance",
+		Run:   ec2ShowAction,
+	}
+
+	cmd.Flags().BoolVarP(&jsonOutput, "json", "", false, "Show raw json ouput")
+	cmd.Flags().BoolVarP(&queryByName, "by-name", "", false, "Show instance by name instead of ")
+
+	return &cmd
+}
+
+func showInstances(input *ec2.DescribeInstancesInput) {
 	svc := ec2.New(session())
 
 	jsonOut := json.NewEncoder(os.Stdout)
 	jsonOut.SetIndent("", "  ")
 
-	err := svc.DescribeInstancesPages(nil, func(output *ec2.DescribeInstancesOutput, lastPage bool) bool {
+	err := svc.DescribeInstancesPages(input, func(output *ec2.DescribeInstancesOutput, lastPage bool) bool {
 		for _, inst := range instancesFromDesc(output) {
 			tags := make(map[string]string)
 			for _, t := range inst.Tags {
@@ -98,6 +117,30 @@ func ec2ListAction(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatalf("DescribeInstance error: %s", err)
 	}
+}
+
+var instanceIDRegex = regexp.MustCompile(`\Ai-[0-9a-f]+\z`)
+
+func ec2ShowAction(cmd *cobra.Command, args []string) {
+	if len(args) < 1 {
+		log.Fatalf("Usage: show <instance-id>")
+	}
+
+	instanceID := args[0]
+
+	if !instanceIDRegex.MatchString(instanceID) {
+		log.Fatalf("<instance-id> must be of the form i-[0-9a-f]+")
+	}
+
+	input := &ec2.DescribeInstancesInput{
+		Filters: []*ec2.Filter{
+			{
+				Name:   aws.String("instance-id"),
+				Values: []*string{&instanceID},
+			},
+		},
+	}
+	showInstances(input)
 }
 
 func shortAZ(fullAZ string) string {
