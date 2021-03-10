@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -36,6 +37,7 @@ func ec2ListCommand() *cobra.Command {
 
 	cmd.Flags().BoolVarP(&jsonOutput, "json", "", false, "Show raw json ouput")
 	cmd.Flags().BoolVarP(&truncateFields, "truncate", "", true, "Trucate fields")
+	cmd.Flags().BoolVarP(&verboseOutput, "verbose", "v", false, "Show verbose (multi-line) output")
 	cmd.Flags().StringVarP(&filterFlag, "filter", "f", "", "Filter results by name or id")
 
 	return &cmd
@@ -53,6 +55,7 @@ func ec2ShowCommand() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVarP(&jsonOutput, "json", "", false, "Show raw json ouput")
+	cmd.Flags().BoolVarP(&verboseOutput, "verbose", "v", false, "Show verbose (multi-line) output")
 	cmd.Flags().BoolVarP(&queryByName, "by-name", "", false, "Show instance by name instead of ")
 
 	return &cmd
@@ -63,6 +66,11 @@ func showInstances(input *ec2.DescribeInstancesInput) {
 
 	jsonOut := json.NewEncoder(os.Stdout)
 	jsonOut.SetIndent("", "  ")
+
+	if input == nil {
+		input = &ec2.DescribeInstancesInput{}
+	}
+	input.MaxResults = aws.Int64(1000)
 
 	err := svc.DescribeInstancesPages(input, func(output *ec2.DescribeInstancesOutput, lastPage bool) bool {
 		for _, inst := range instancesFromDesc(output) {
@@ -87,9 +95,10 @@ func showInstances(input *ec2.DescribeInstancesInput) {
 				az := *inst.Placement.AvailabilityZone
 
 				var (
-					privateIPs     []string
-					publicIPs      []string
-					securityGroups []string
+					privateIPs           []string
+					publicIPs            []string
+					securityGroupNames   []string
+					securityGroupNameIDs []string
 				)
 
 				for _, iface := range inst.NetworkInterfaces {
@@ -102,14 +111,35 @@ func showInstances(input *ec2.DescribeInstancesInput) {
 				}
 
 				for _, sg := range inst.SecurityGroups {
-					securityGroups = append(securityGroups, *sg.GroupName)
+					securityGroupNames = append(securityGroupNames, *sg.GroupName)
+					securityGroupNameIDs = append(securityGroupNameIDs, fmt.Sprintf("%s(%s)", *sg.GroupName, *sg.GroupId))
 				}
 
-				formatStr := "%s %-35.35s %6.6s %4.4s %3.3s %15s %15s %s\n"
-				if !truncateFields {
-					formatStr = "%s %s %s %s %s %s %s %s\n"
+				var ifaces []string
+				for _, iface := range inst.NetworkInterfaces {
+					ifaces = append(ifaces, *iface.NetworkInterfaceId)
 				}
-				fmt.Printf(formatStr, *inst.InstanceId, name, instType, shortAZ(az), state, strings.Join(privateIPs, ","), strings.Join(publicIPs, ","), strings.Join(securityGroups, ","))
+
+				if verboseOutput {
+					fmt.Printf("========[ %s ]===================\n", *inst.InstanceId)
+					fmt.Printf("name     : %s\n", name)
+					fmt.Printf("id       : %s\n", *inst.InstanceId)
+					fmt.Printf("type     : %s\n", instType)
+					fmt.Printf("az       : %s\n", az)
+					fmt.Printf("state    : %s\n", state)
+					fmt.Printf("priv IPs : %s\n", strings.Join(privateIPs, ","))
+					fmt.Printf("pub  IPs : %s\n", strings.Join(publicIPs, ","))
+					fmt.Printf("SGs      : %s\n", strings.Join(securityGroupNameIDs, ","))
+					fmt.Printf("Launch   : %s\n", inst.LaunchTime.Format(time.RFC3339))
+					fmt.Printf("IFaces   : %s\n", strings.Join(ifaces, ";"))
+					fmt.Printf("Tags     : %v\n", tags)
+				} else {
+					formatStr := "%s %-35.35s %6.6s %4.4s %3.3s %15s %15s %s\n"
+					if !truncateFields {
+						formatStr = "%s %s %s %s %s %s %s %s\n"
+					}
+					fmt.Printf(formatStr, *inst.InstanceId, name, instType, shortAZ(az), state, strings.Join(privateIPs, ","), strings.Join(publicIPs, ","), strings.Join(securityGroupNames, ","))
+				}
 			}
 		}
 		return true
