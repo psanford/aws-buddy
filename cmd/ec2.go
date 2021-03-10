@@ -71,7 +71,9 @@ func showInstances(input *ec2.DescribeInstancesInput) {
 	if input == nil {
 		input = &ec2.DescribeInstancesInput{}
 	}
-	input.MaxResults = aws.Int64(1000)
+	if len(input.InstanceIds) == 0 {
+		input.MaxResults = aws.Int64(1000)
+	}
 
 	if filterNameFlag != "" {
 		if input.Filters == nil {
@@ -164,17 +166,19 @@ var instanceIDRegex = regexp.MustCompile(`\Ai-[0-9a-f]+\z`)
 
 func ec2ShowAction(cmd *cobra.Command, args []string) {
 	if len(args) < 1 {
-		log.Fatalf("Usage: show <instance-id>")
+		log.Fatalf("Usage: show <instance-id> [...<instance-id>]")
 	}
 
-	instanceID := args[0]
+	instanceIDs := args
 
-	if !instanceIDRegex.MatchString(instanceID) {
-		log.Fatalf("<instance-id> must be of the form i-[0-9a-f]+")
+	for _, instanceID := range instanceIDs {
+		if !instanceIDRegex.MatchString(instanceID) {
+			log.Fatalf("<instance-id> must be of the form i-[0-9a-f]+")
+		}
 	}
 
 	input := &ec2.DescribeInstancesInput{
-		InstanceIds: []*string{aws.String(instanceID)},
+		InstanceIds: aws.StringSlice(instanceIDs),
 	}
 	showInstances(input)
 }
