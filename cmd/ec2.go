@@ -39,6 +39,7 @@ func ec2ListCommand() *cobra.Command {
 	cmd.Flags().BoolVarP(&truncateFields, "truncate", "", true, "Trucate fields")
 	cmd.Flags().BoolVarP(&verboseOutput, "verbose", "v", false, "Show verbose (multi-line) output")
 	cmd.Flags().StringVarP(&filterFlag, "filter", "f", "", "Filter results by name or id")
+	cmd.Flags().StringVarP(&filterNameFlag, "filter-name", "", "", "API Filter by Tag:Name")
 
 	return &cmd
 }
@@ -56,7 +57,7 @@ func ec2ShowCommand() *cobra.Command {
 
 	cmd.Flags().BoolVarP(&jsonOutput, "json", "", false, "Show raw json ouput")
 	cmd.Flags().BoolVarP(&verboseOutput, "verbose", "v", false, "Show verbose (multi-line) output")
-	cmd.Flags().BoolVarP(&queryByName, "by-name", "", false, "Show instance by name instead of ")
+	cmd.Flags().StringVarP(&filterNameFlag, "filter-name", "", "", "API Filter by Tag:Name")
 
 	return &cmd
 }
@@ -71,6 +72,16 @@ func showInstances(input *ec2.DescribeInstancesInput) {
 		input = &ec2.DescribeInstancesInput{}
 	}
 	input.MaxResults = aws.Int64(1000)
+
+	if filterNameFlag != "" {
+		if input.Filters == nil {
+			input.Filters = []*ec2.Filter{}
+		}
+		input.Filters = append(input.Filters, &ec2.Filter{
+			Name:   aws.String("tag:Name"),
+			Values: []*string{&filterNameFlag},
+		})
+	}
 
 	err := svc.DescribeInstancesPages(input, func(output *ec2.DescribeInstancesOutput, lastPage bool) bool {
 		for _, inst := range instancesFromDesc(output) {
@@ -163,12 +174,7 @@ func ec2ShowAction(cmd *cobra.Command, args []string) {
 	}
 
 	input := &ec2.DescribeInstancesInput{
-		Filters: []*ec2.Filter{
-			{
-				Name:   aws.String("instance-id"),
-				Values: []*string{&instanceID},
-			},
-		},
+		InstanceIds: []*string{aws.String(instanceID)},
 	}
 	showInstances(input)
 }

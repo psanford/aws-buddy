@@ -27,6 +27,7 @@ var (
 	externalCommand       string
 	startingMasterAccount string
 	filterFlag            string
+	filterNameFlag        string
 	daysFlag              int
 )
 
