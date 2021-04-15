@@ -43,7 +43,6 @@ func ec2ListCommand() *cobra.Command {
 
 	return &cmd
 }
-
 func ec2ListAction(cmd *cobra.Command, args []string) {
 	showInstances(nil)
 }
@@ -137,9 +136,9 @@ func showInstances(input *ec2.DescribeInstancesInput) {
 					fmt.Printf("========[ %s ]===================\n", *inst.InstanceId)
 					fmt.Printf("name     : %s\n", name)
 					fmt.Printf("id       : %s\n", *inst.InstanceId)
-					fmt.Printf("type     : %s\n", instType)
+					fmt.Printf("type     : %s\n", *inst.InstanceType)
 					fmt.Printf("az       : %s\n", az)
-					fmt.Printf("state    : %s\n", state)
+					fmt.Printf("state    : %s\n", *inst.State.Name)
 					fmt.Printf("priv IPs : %s\n", strings.Join(privateIPs, ","))
 					fmt.Printf("pub  IPs : %s\n", strings.Join(publicIPs, ","))
 					fmt.Printf("SGs      : %s\n", strings.Join(securityGroupNameIDs, ","))

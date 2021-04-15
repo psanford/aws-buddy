@@ -19,9 +19,11 @@ var rootCmd = &cobra.Command{
 
 var (
 	jsonOutput            bool
+	csvOutput             bool
 	verboseOutput         bool
 	queryByName           bool
 	truncateFields        bool
+	iamUserFullArn        bool
 	assumeRoleName        string
 	orgListFileName       string
 	externalCommand       string
@@ -40,6 +42,7 @@ func Execute() error {
 	rootCmd.AddCommand(orgCommand())
 	rootCmd.AddCommand(route53Command())
 	rootCmd.AddCommand(costCommand())
+	rootCmd.AddCommand(iamCommand())
 	rootCmd.AddCommand(completionCommand())
 
 	return rootCmd.Execute()
