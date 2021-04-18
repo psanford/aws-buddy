@@ -67,7 +67,7 @@ func iamListUsers(cmd *cobra.Command, args []string) {
 		format = "%-50s %10t %10s %10s %10d %10d %10d\n"
 	}
 
-	iamSvc.ListUsersPages(&iam.ListUsersInput{}, func(out *iam.ListUsersOutput, b bool) bool {
+	err := iamSvc.ListUsersPages(&iam.ListUsersInput{}, func(out *iam.ListUsersOutput, b bool) bool {
 		for _, user := range out.Users {
 			passwordLastUsed := "never"
 			passwordCreation := "no-pass"
@@ -143,4 +143,8 @@ func iamListUsers(cmd *cobra.Command, args []string) {
 
 		return true
 	})
+
+	if err != nil {
+		log.Fatalf("ListUsers err: %s", err)
+	}
 }

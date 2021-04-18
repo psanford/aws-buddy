@@ -30,6 +30,8 @@ var (
 	startingMasterAccount string
 	filterFlag            string
 	filterNameFlag        string
+	paramType             string
+	paramDescr            string
 	daysFlag              int
 )
 
@@ -43,6 +45,7 @@ func Execute() error {
 	rootCmd.AddCommand(route53Command())
 	rootCmd.AddCommand(costCommand())
 	rootCmd.AddCommand(iamCommand())
+	rootCmd.AddCommand(paramCommand())
 	rootCmd.AddCommand(completionCommand())
 
 	return rootCmd.Execute()
