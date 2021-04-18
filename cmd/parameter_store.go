@@ -89,7 +89,7 @@ func paramGet(cmd *cobra.Command, args []string) {
 
 func paramPutCommand() *cobra.Command {
 	cmd := cobra.Command{
-		Use:   "set",
+		Use:   "put",
 		Short: "Set or create parameter value",
 		Run:   paramPut,
 	}
@@ -128,7 +128,7 @@ func paramPut(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("param %s: %s => %s\n\n", name, oldVal, value)
 
-	ok := confirm("Are you sure you want to make this cahnge [yN]? ")
+	ok := confirm("Are you sure you want to make this change [yN]? ")
 	if !ok {
 		log.Fatalln("Aborting")
 	}
@@ -181,7 +181,7 @@ func paramCp(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("param %s => %s (%s)\n\n", oldPath, newPath, *resp.Parameter.Value)
 
-	ok := confirm("Are you sure you want to make this cahnge [yN]? ")
+	ok := confirm("Are you sure you want to make this change [yN]? ")
 	if !ok {
 		log.Fatalln("Aborting")
 	}
