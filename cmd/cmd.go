@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	awssession "github.com/aws/aws-sdk-go/aws/session"
 	"github.com/psanford/aws-buddy/ec2"
+	"github.com/psanford/aws-buddy/org"
 	"github.com/spf13/cobra"
 )
 
@@ -19,21 +20,17 @@ var rootCmd = &cobra.Command{
 }
 
 var (
-	jsonOutput            bool
-	csvOutput             bool
-	verboseOutput         bool
-	queryByName           bool
-	truncateFields        bool
-	iamUserFullArn        bool
-	assumeRoleName        string
-	orgListFileName       string
-	externalCommand       string
-	startingMasterAccount string
-	filterFlag            string
-	filterNameFlag        string
-	paramType             string
-	paramDescr            string
-	daysFlag              int
+	jsonOutput     bool
+	csvOutput      bool
+	verboseOutput  bool
+	queryByName    bool
+	truncateFields bool
+	iamUserFullArn bool
+	filterFlag     string
+	filterNameFlag string
+	paramType      string
+	paramDescr     string
+	daysFlag       int
 )
 
 func Execute() error {
@@ -42,7 +39,7 @@ func Execute() error {
 	}
 
 	rootCmd.AddCommand(ec2.Command())
-	rootCmd.AddCommand(orgCommand())
+	rootCmd.AddCommand(org.Command())
 	rootCmd.AddCommand(route53Command())
 	rootCmd.AddCommand(costCommand())
 	rootCmd.AddCommand(iamCommand())

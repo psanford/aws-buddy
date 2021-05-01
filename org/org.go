@@ -1,4 +1,4 @@
-package cmd
+package org
 
 import (
 	"encoding/json"
@@ -13,10 +13,18 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/organizations"
 	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/psanford/aws-buddy/config"
 	"github.com/spf13/cobra"
 )
 
-func orgCommand() *cobra.Command {
+var (
+	jsonOutput      bool
+	assumeRoleName  string
+	orgListFileName string
+	externalCommand string
+)
+
+func Command() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "org",
 		Short: "Organization Commands",
@@ -55,7 +63,7 @@ func orgEachAccountCommand() *cobra.Command {
 }
 
 func orgListAccountsAction(cmd *cobra.Command, args []string) {
-	svc := organizations.New(session())
+	svc := organizations.New(config.Session())
 
 	jsonOut := json.NewEncoder(os.Stdout)
 	jsonOut.SetIndent("", "  ")
@@ -93,9 +101,9 @@ func orgEachAccountAction(cmd *cobra.Command, args []string) {
 		cmdPath = buddyPath
 	}
 
-	svc := organizations.New(session())
+	svc := organizations.New(config.Session())
 
-	stsClient := sts.New(session())
+	stsClient := sts.New(config.Session())
 
 	if assumeRoleName == "" {
 		log.Fatal("-role is a required flag")
