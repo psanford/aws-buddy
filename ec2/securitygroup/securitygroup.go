@@ -1,4 +1,4 @@
-package cmd
+package securitygroup
 
 import (
 	"encoding/json"
@@ -9,10 +9,15 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/psanford/aws-buddy/config"
 	"github.com/spf13/cobra"
 )
 
-func securityGroupCommand() *cobra.Command {
+var (
+	jsonOutput bool
+)
+
+func Command() *cobra.Command {
 	cmd := cobra.Command{
 		Use:     "security_group",
 		Aliases: []string{"sg"},
@@ -46,7 +51,7 @@ func sgShowCommand() *cobra.Command {
 }
 
 func sgListAction(cmd *cobra.Command, args []string) {
-	svc := ec2.New(session())
+	svc := ec2.New(config.Session())
 
 	jsonOut := json.NewEncoder(os.Stdout)
 	jsonOut.SetIndent("", "  ")
@@ -80,7 +85,7 @@ func sgShowAction(cmd *cobra.Command, args []string) {
 		log.Fatalf("Missing required sg-id argument")
 	}
 
-	svc := ec2.New(session())
+	svc := ec2.New(config.Session())
 
 	groups := findSGs(svc, "group-id", args[0])
 	if len(groups) == 0 {
@@ -140,7 +145,7 @@ func sgShowAction(cmd *cobra.Command, args []string) {
 func findSGs(svc *ec2.EC2, attr, val string) []*ec2.SecurityGroup {
 	input := ec2.DescribeSecurityGroupsInput{
 		Filters: []*ec2.Filter{
-			&ec2.Filter{
+			{
 				Name:   aws.String(attr),
 				Values: []*string{aws.String(val)},
 			},

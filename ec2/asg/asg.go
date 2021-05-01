@@ -1,4 +1,4 @@
-package cmd
+package asg
 
 import (
 	"encoding/json"
@@ -6,10 +6,11 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/service/autoscaling"
+	"github.com/psanford/aws-buddy/config"
 	"github.com/spf13/cobra"
 )
 
-func asgCommand() *cobra.Command {
+func Command() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "asg",
 		Short: "ASG Commands",
@@ -34,7 +35,7 @@ func asgListScalingActivitiesAction(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
 		log.Fatalf("Missing required asg-name argument")
 	}
-	svc := autoscaling.New(session())
+	svc := autoscaling.New(config.Session())
 
 	jsonOut := json.NewEncoder(os.Stdout)
 	jsonOut.SetIndent("", "  ")

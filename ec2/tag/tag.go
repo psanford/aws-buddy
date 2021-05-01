@@ -1,4 +1,4 @@
-package cmd
+package tag
 
 import (
 	"fmt"
@@ -6,10 +6,13 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/psanford/aws-buddy/config"
+	"github.com/psanford/aws-buddy/console"
+	"github.com/psanford/aws-buddy/ec2/instance"
 	"github.com/spf13/cobra"
 )
 
-func tagCommands() *cobra.Command {
+func Command() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "tag",
 		Short: "Tag Commands",
@@ -40,7 +43,7 @@ func tagListAction(cmd *cobra.Command, args []string) {
 
 	instanceID := args[0]
 
-	inst, err := getInstance(instanceID)
+	inst, err := instance.Get(instanceID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,7 +58,7 @@ func tagListAction(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("%s (%s) tags:\n", name, instanceID)
-	fmt.Print(formatTable(tbl))
+	fmt.Print(console.FormatTable(tbl))
 }
 
 func tagSetCommand() *cobra.Command {
@@ -74,7 +77,7 @@ func setTagAction(cmd *cobra.Command, args []string) {
 	}
 
 	instanceID := args[0]
-	inst, err := getInstance(instanceID)
+	inst, err := instance.Get(instanceID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -97,7 +100,7 @@ func setTagAction(cmd *cobra.Command, args []string) {
 	fmt.Printf("%s (%s)\n\n", instanceID, instName)
 	fmt.Printf("tag %s: %s => %s\n\n", tagName, oldVal, newVal)
 
-	ok := confirm("Are you sure you want to make this change [yN]? ")
+	ok := console.Confirm("Are you sure you want to make this change [yN]? ")
 	if !ok {
 		log.Fatalln("Aborting")
 	}
@@ -105,7 +108,7 @@ func setTagAction(cmd *cobra.Command, args []string) {
 	// give you a chance to reconsider and ctrl-c
 	time.Sleep(3 * time.Second)
 
-	svc := ec2.New(session())
+	svc := ec2.New(config.Session())
 	_, err = svc.CreateTags(&ec2.CreateTagsInput{
 		Resources: []*string{&instanceID},
 		Tags: []*ec2.Tag{
@@ -136,7 +139,7 @@ func removeTagAction(cmd *cobra.Command, args []string) {
 	}
 
 	instanceID := args[0]
-	inst, err := getInstance(instanceID)
+	inst, err := instance.Get(instanceID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -162,7 +165,7 @@ func removeTagAction(cmd *cobra.Command, args []string) {
 	}
 	fmt.Printf("tag %s: %s => (deleted)\n\n", tagName, *oldVal)
 
-	ok := confirm("Are you sure you want to make this change [yN]? ")
+	ok := console.Confirm("Are you sure you want to make this change [yN]? ")
 	if !ok {
 		log.Fatalln("Aborting")
 	}
@@ -170,7 +173,7 @@ func removeTagAction(cmd *cobra.Command, args []string) {
 	// give you a chance to reconsider and ctrl-c
 	time.Sleep(3 * time.Second)
 
-	svc := ec2.New(session())
+	svc := ec2.New(config.Session())
 	svc.DeleteTags(&ec2.DeleteTagsInput{
 		Resources: []*string{&instanceID},
 		Tags: []*ec2.Tag{

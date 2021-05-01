@@ -1,4 +1,4 @@
-package cmd
+package ec2
 
 import (
 	"encoding/json"
@@ -11,10 +11,23 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/psanford/aws-buddy/config"
+	"github.com/psanford/aws-buddy/ec2/asg"
+	"github.com/psanford/aws-buddy/ec2/instance"
+	"github.com/psanford/aws-buddy/ec2/securitygroup"
+	"github.com/psanford/aws-buddy/ec2/tag"
 	"github.com/spf13/cobra"
 )
 
-func ec2Command() *cobra.Command {
+var (
+	jsonOutput     bool
+	verboseOutput  bool
+	truncateFields bool
+	filterFlag     string
+	filterNameFlag string
+)
+
+func Command() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "ec2",
 		Short: "EC2 Commands",
@@ -22,9 +35,9 @@ func ec2Command() *cobra.Command {
 
 	cmd.AddCommand(ec2ListCommand())
 	cmd.AddCommand(ec2ShowCommand())
-	cmd.AddCommand(securityGroupCommand())
-	cmd.AddCommand(asgCommand())
-	cmd.AddCommand(tagCommands())
+	cmd.AddCommand(securitygroup.Command())
+	cmd.AddCommand(asg.Command())
+	cmd.AddCommand(tag.Command())
 	return &cmd
 }
 
@@ -62,7 +75,7 @@ func ec2ShowCommand() *cobra.Command {
 }
 
 func showInstances(input *ec2.DescribeInstancesInput) {
-	svc := ec2.New(session())
+	svc := ec2.New(config.Session())
 
 	jsonOut := json.NewEncoder(os.Stdout)
 	jsonOut.SetIndent("", "  ")
@@ -85,7 +98,7 @@ func showInstances(input *ec2.DescribeInstancesInput) {
 	}
 
 	err := svc.DescribeInstancesPages(input, func(output *ec2.DescribeInstancesOutput, lastPage bool) bool {
-		for _, inst := range instancesFromDesc(output) {
+		for _, inst := range instance.InstancesFromDesc(output) {
 			tags := make(map[string]string)
 			for _, t := range inst.Tags {
 				tags[*t.Key] = *t.Value
@@ -216,46 +229,4 @@ var typeReplacer = strings.NewReplacer(
 
 func shortType(fullType string) string {
 	return typeReplacer.Replace(fullType)
-}
-
-func instancesFromDesc(desc *ec2.DescribeInstancesOutput) []ec2.Instance {
-	out := make([]ec2.Instance, 0)
-	for _, res := range desc.Reservations {
-		for _, instPtr := range res.Instances {
-			inst := *instPtr
-			out = append(out, inst)
-		}
-	}
-
-	return out
-}
-
-func getInstance(instanceID string) (*ec2.Instance, error) {
-	svc := ec2.New(session())
-	input := ec2.DescribeInstancesInput{
-		Filters: []*ec2.Filter{
-			{
-				Name:   aws.String("instance-id"),
-				Values: []*string{&instanceID},
-			},
-		},
-	}
-	output, err := svc.DescribeInstances(&input)
-	if err != nil {
-		return nil, fmt.Errorf("DescribeInstances err: %w", err)
-	}
-
-	instances := instancesFromDesc(output)
-	if len(instances) < 1 {
-		return nil, fmt.Errorf("No instance found")
-	}
-	if len(instances) > 1 {
-		ids := make([]string, 0, len(instances))
-		for _, inst := range instances {
-			ids = append(ids, *inst.InstanceId)
-		}
-		return nil, fmt.Errorf("Multiple instances found found: %s", strings.Join(ids, ","))
-	}
-
-	return &instances[0], nil
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	awssession "github.com/aws/aws-sdk-go/aws/session"
+	"github.com/psanford/aws-buddy/ec2"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +41,7 @@ func Execute() error {
 		region = os.Getenv("AWS_DEFAULT_REGION")
 	}
 
-	rootCmd.AddCommand(ec2Command())
+	rootCmd.AddCommand(ec2.Command())
 	rootCmd.AddCommand(orgCommand())
 	rootCmd.AddCommand(route53Command())
 	rootCmd.AddCommand(costCommand())

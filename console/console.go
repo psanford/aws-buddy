@@ -1,10 +1,11 @@
-package cmd
+package console
 
 import (
+	"fmt"
 	"strings"
 )
 
-func formatTable(rows [][]string) string {
+func FormatTable(rows [][]string) string {
 	if len(rows) == 0 {
 		return ""
 	}
@@ -33,4 +34,12 @@ func formatTable(rows [][]string) string {
 		out.WriteString("\n")
 	}
 	return out.String()
+}
+
+func Confirm(prompt string) bool {
+	fmt.Print(prompt)
+	var result string
+	fmt.Scanln(&result)
+
+	return result == "y" || result == "Y" || result == "yes" || result == "Yes"
 }
