@@ -1,4 +1,4 @@
-package cmd
+package route53
 
 import (
 	"encoding/json"
@@ -7,10 +7,15 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/service/route53"
+	"github.com/psanford/aws-buddy/config"
 	"github.com/spf13/cobra"
 )
 
-func route53Command() *cobra.Command {
+var (
+	jsonOutput bool
+)
+
+func Command() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "route53",
 		Short: "Route53 Commands",
@@ -34,7 +39,7 @@ func route53ListCommand() *cobra.Command {
 }
 
 func route53ListRecords(cmd *cobra.Command, args []string) {
-	svc := route53.New(session())
+	svc := route53.New(config.Session())
 
 	jsonOut := json.NewEncoder(os.Stdout)
 	jsonOut.SetIndent("", "  ")

@@ -1,4 +1,4 @@
-package cmd
+package iam
 
 import (
 	"encoding/csv"
@@ -9,10 +9,17 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/psanford/aws-buddy/config"
 	"github.com/spf13/cobra"
 )
 
-func iamCommand() *cobra.Command {
+var (
+	jsonOutput     bool
+	csvOutput      bool
+	iamUserFullArn bool
+)
+
+func Command() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "iam",
 		Short: "IAM Commands",
@@ -49,7 +56,7 @@ func iamUserListCommand() *cobra.Command {
 }
 
 func iamListUsers(cmd *cobra.Command, args []string) {
-	iamSvc := iam.New(session())
+	iamSvc := iam.New(config.Session())
 
 	jsonOut := json.NewEncoder(os.Stdout)
 	jsonOut.SetIndent("", "  ")

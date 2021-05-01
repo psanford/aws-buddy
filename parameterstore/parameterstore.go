@@ -1,4 +1,4 @@
-package cmd
+package parameterstore
 
 import (
 	"encoding/json"
@@ -8,10 +8,18 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ssm"
+	"github.com/psanford/aws-buddy/config"
+	"github.com/psanford/aws-buddy/console"
 	"github.com/spf13/cobra"
 )
 
-func paramCommand() *cobra.Command {
+var (
+	jsonOutput bool
+	paramType  string
+	paramDescr string
+)
+
+func Command() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "param",
 		Short: "SSM Parameter Store Commands",
@@ -38,7 +46,7 @@ func paramListCommand() *cobra.Command {
 }
 
 func paramList(cmd *cobra.Command, args []string) {
-	ssmClient := ssm.New(session())
+	ssmClient := ssm.New(config.Session())
 
 	jsonOut := json.NewEncoder(os.Stdout)
 	jsonOut.SetIndent("", "  ")
@@ -74,7 +82,7 @@ func paramGet(cmd *cobra.Command, args []string) {
 		log.Fatalf("Usage: get <path/to/parameter>")
 	}
 
-	ssmClient := ssm.New(session())
+	ssmClient := ssm.New(config.Session())
 
 	resp, err := ssmClient.GetParameter(&ssm.GetParameterInput{
 		Name:           &args[0],
@@ -105,7 +113,7 @@ func paramPut(cmd *cobra.Command, args []string) {
 		log.Fatalf("Usage: get <path/to/parameter> <value>")
 	}
 
-	ssmClient := ssm.New(session())
+	ssmClient := ssm.New(config.Session())
 
 	name := args[0]
 	value := args[1]
@@ -128,7 +136,7 @@ func paramPut(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("param %s: %s => %s\n\n", name, oldVal, value)
 
-	ok := confirm("Are you sure you want to make this change [yN]? ")
+	ok := console.Confirm("Are you sure you want to make this change [yN]? ")
 	if !ok {
 		log.Fatalln("Aborting")
 	}
@@ -166,7 +174,7 @@ func paramCp(cmd *cobra.Command, args []string) {
 		log.Fatalf("Usage: cp <old/path> <new/path>")
 	}
 
-	ssmClient := ssm.New(session())
+	ssmClient := ssm.New(config.Session())
 
 	oldPath := args[0]
 	newPath := args[1]
@@ -181,7 +189,7 @@ func paramCp(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("param %s => %s (%s)\n\n", oldPath, newPath, *resp.Parameter.Value)
 
-	ok := confirm("Are you sure you want to make this change [yN]? ")
+	ok := console.Confirm("Are you sure you want to make this change [yN]? ")
 	if !ok {
 		log.Fatalln("Aborting")
 	}

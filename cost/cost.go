@@ -1,4 +1,4 @@
-package cmd
+package cost
 
 import (
 	"fmt"
@@ -7,10 +7,16 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/costexplorer"
+	"github.com/psanford/aws-buddy/config"
 	"github.com/spf13/cobra"
 )
 
-func costCommand() *cobra.Command {
+var (
+	jsonOutput bool
+	daysFlag   int
+)
+
+func Command() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "cost",
 		Short: "COST Commands",
@@ -33,7 +39,7 @@ func costDailyComparison() *cobra.Command {
 }
 
 func dailyCostComparisonAction(cmd *cobra.Command, args []string) {
-	svc := costexplorer.New(session())
+	svc := costexplorer.New(config.Session())
 
 	today := time.Now()
 	start := today.AddDate(0, 0, -1*daysFlag)
