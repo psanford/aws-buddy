@@ -133,12 +133,20 @@ func sgShowAction(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("ingress rules:\n")
 	for _, perm := range sg.IpPermissions {
-		fmt.Printf("%s\n", perm)
+		jsonText, err := json.Marshal(perm)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%s\n", jsonText)
 	}
 
-	fmt.Printf("egress rules:\n")
+	fmt.Printf("\negress rules:\n")
 	for _, perm := range sg.IpPermissionsEgress {
-		fmt.Printf("%s\n", perm)
+		jsonText, err := json.Marshal(perm)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%s\n", jsonText)
 	}
 }
 
