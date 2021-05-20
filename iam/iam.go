@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/psanford/aws-buddy/config"
@@ -37,6 +39,7 @@ func iamUserCommand() *cobra.Command {
 	}
 
 	cmd.AddCommand(iamUserListCommand())
+	cmd.AddCommand(iamUserShowCommand())
 
 	return &cmd
 }
@@ -153,5 +156,148 @@ func iamListUsers(cmd *cobra.Command, args []string) {
 
 	if err != nil {
 		log.Fatalf("ListUsers err: %s", err)
+	}
+}
+
+func iamUserShowCommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "show <username>",
+		Short: "Show user",
+		Run:   iamShowUser,
+	}
+
+	cmd.Flags().BoolVarP(&jsonOutput, "json", "", false, "Show raw json ouput")
+
+	return &cmd
+}
+
+func iamShowUser(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		log.Fatalf("Missing required <username> argument")
+	}
+	username := args[0]
+
+	iamSvc := iam.New(config.Session())
+
+	jsonOut := json.NewEncoder(os.Stdout)
+	jsonOut.SetIndent("", "  ")
+
+	userOutput, err := iamSvc.GetUser(&iam.GetUserInput{
+		UserName: aws.String(username),
+	})
+
+	if err != nil {
+		log.Fatalf("GetUser error: %s", err)
+	}
+
+	u := userOutput.User
+
+	passwordLastUsed := "never"
+	if u.PasswordLastUsed != nil {
+		passwordLastUsed = u.PasswordLastUsed.Format("2006-01-02")
+	}
+
+	fmt.Printf("========[ %s ]===================\n", *u.UserId)
+	fmt.Printf("name         : %s\n", *u.UserName)
+	fmt.Printf("arn          : %s\n", *u.Arn)
+	fmt.Printf("creation     : %s\n", u.CreateDate.Format(time.RFC3339))
+	fmt.Printf("pw last      : %s\n", passwordLastUsed)
+
+	listPolicyInput := iam.ListUserPoliciesInput{
+		UserName: aws.String(username),
+	}
+	err = iamSvc.ListUserPoliciesPages(&listPolicyInput, func(out *iam.ListUserPoliciesOutput, more bool) bool {
+		for _, pname := range out.PolicyNames {
+
+			gotPolicy, err := iamSvc.GetUserPolicy(&iam.GetUserPolicyInput{
+				UserName:   aws.String(username),
+				PolicyName: pname,
+			})
+			if err != nil {
+				log.Printf("Fetch iam user inline policy err: %s", err)
+				continue
+			}
+
+			fmt.Printf("========[ policy %s ]===================\n", *pname)
+			fmt.Printf("%s\n", *gotPolicy.PolicyDocument)
+		}
+
+		return true
+
+	})
+	if err != nil {
+		log.Fatalf("List user policies err: %s", err)
+	}
+
+	listAttachedInput := iam.ListAttachedUserPoliciesInput{
+		UserName: aws.String(username),
+	}
+
+	fmt.Printf("========[ attached policies ]===================\n")
+	err = iamSvc.ListAttachedUserPoliciesPages(&listAttachedInput, func(laupo *iam.ListAttachedUserPoliciesOutput, b bool) bool {
+		for _, p := range laupo.AttachedPolicies {
+			fmt.Printf("%s : %s\n", *p.PolicyArn, *p.PolicyName)
+		}
+		return true
+	})
+	if err != nil {
+		log.Printf("List attched user policies err: %s", err)
+	}
+
+	listGroupsInput := iam.ListGroupsForUserInput{
+		UserName: aws.String(username),
+	}
+	err = iamSvc.ListGroupsForUserPages(&listGroupsInput, func(groups *iam.ListGroupsForUserOutput, more bool) bool {
+		for _, g := range groups.Groups {
+			fmt.Printf("========[ group %s ]===================\n", *g.GroupId)
+			fmt.Printf("name         : %s\n", *g.GroupName)
+			fmt.Printf("arn          : %s\n", *g.Arn)
+
+			listGroupPoliciesInput := iam.ListGroupPoliciesInput{
+				GroupName: g.GroupName,
+			}
+			err = iamSvc.ListGroupPoliciesPages(&listGroupPoliciesInput, func(p *iam.ListGroupPoliciesOutput, more bool) bool {
+				for _, pname := range p.PolicyNames {
+					gotPolicy, err := iamSvc.GetGroupPolicy(&iam.GetGroupPolicyInput{
+						GroupName:  g.GroupName,
+						PolicyName: pname,
+					})
+
+					if err != nil {
+						log.Printf("Fetch iam group policy err: %s", err)
+						continue
+					}
+
+					fmt.Printf("========[ group-policy %s ]===================\n", *pname)
+					fmt.Printf("%s\n", *gotPolicy.PolicyDocument)
+				}
+
+				return true
+			})
+			if err != nil {
+				log.Printf("List group policies err: %s %s", *g.GroupName, err)
+			}
+
+			listAttachedGroup := iam.ListAttachedGroupPoliciesInput{
+				GroupName: g.GroupName,
+			}
+			fmt.Printf("========[ attached group policies ]===================\n")
+			iamSvc.ListAttachedGroupPoliciesPages(&listAttachedGroup, func(lagpo *iam.ListAttachedGroupPoliciesOutput, b bool) bool {
+				for _, p := range lagpo.AttachedPolicies {
+					fmt.Printf("%s : %s\n", *p.PolicyArn, *p.PolicyName)
+				}
+
+				return true
+			})
+			if err != nil {
+				log.Printf("List attched group policies err: %s", err)
+			}
+
+		}
+
+		return true
+	})
+	if err != nil {
+		log.Fatalf("List user groups err: %s", err)
 	}
 }
