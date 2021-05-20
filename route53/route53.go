@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/psanford/aws-buddy/config"
@@ -13,6 +14,7 @@ import (
 
 var (
 	jsonOutput bool
+	filterZone string
 )
 
 func Command() *cobra.Command {
@@ -22,6 +24,7 @@ func Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(route53ListCommand())
+	cmd.AddCommand(route53ListZonesCommand())
 
 	return &cmd
 }
@@ -34,6 +37,7 @@ func route53ListCommand() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVarP(&jsonOutput, "json", "", false, "Show raw json ouput")
+	cmd.Flags().StringVarP(&filterZone, "zone", "", "", "Filter by zone name")
 
 	return &cmd
 }
@@ -44,8 +48,16 @@ func route53ListRecords(cmd *cobra.Command, args []string) {
 	jsonOut := json.NewEncoder(os.Stdout)
 	jsonOut.SetIndent("", "  ")
 
+	if filterZone != "" && !strings.HasSuffix(filterZone, ".") {
+		filterZone += "."
+	}
+
 	err := svc.ListHostedZonesPages(nil, func(zoneOut *route53.ListHostedZonesOutput, more bool) bool {
 		for _, zone := range zoneOut.HostedZones {
+
+			if filterZone != "" && *zone.Name != filterZone {
+				continue
+			}
 
 			listRRS := route53.ListResourceRecordSetsInput{
 				HostedZoneId: zone.Id,
@@ -85,6 +97,42 @@ func route53ListRecords(cmd *cobra.Command, args []string) {
 			})
 
 		}
+		return true
+	})
+
+	if err != nil {
+		log.Fatalf("ListHostedZones error: %s", err)
+	}
+}
+
+func route53ListZonesCommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "zones",
+		Short: "List Zones",
+		Run:   route53ListZones,
+	}
+
+	cmd.Flags().BoolVarP(&jsonOutput, "json", "", false, "Show raw json ouput")
+
+	return &cmd
+}
+
+func route53ListZones(cmd *cobra.Command, args []string) {
+	svc := route53.New(config.Session())
+
+	jsonOut := json.NewEncoder(os.Stdout)
+	jsonOut.SetIndent("", "  ")
+
+	err := svc.ListHostedZonesPages(nil, func(zoneOut *route53.ListHostedZonesOutput, more bool) bool {
+		for _, zone := range zoneOut.HostedZones {
+
+			if jsonOutput {
+				jsonOut.Encode(zone)
+			} else {
+				fmt.Printf("%-40.40s %6.6d %s\n", *zone.Id, *zone.ResourceRecordSetCount, *zone.Name)
+			}
+		}
+
 		return true
 	})
 
