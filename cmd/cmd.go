@@ -27,6 +27,11 @@ func Execute() error {
 	if os.Getenv("AWS_DEFAULT_REGION") != "" {
 		region = os.Getenv("AWS_DEFAULT_REGION")
 	}
+	if os.Getenv("AWS_REGION") != "" {
+		region = os.Getenv("AWS_REGION")
+	}
+
+	os.Setenv("AWS_DEFAULT_REGION", region)
 
 	rootCmd.AddCommand(ec2.Command())
 	rootCmd.AddCommand(org.Command())
