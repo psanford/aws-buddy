@@ -13,9 +13,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/psanford/aws-buddy/config"
 	"github.com/psanford/aws-buddy/ec2/asg"
+	"github.com/psanford/aws-buddy/ec2/eip"
 	"github.com/psanford/aws-buddy/ec2/instance"
 	"github.com/psanford/aws-buddy/ec2/securitygroup"
 	"github.com/psanford/aws-buddy/ec2/tag"
+	"github.com/psanford/aws-buddy/ec2/volume"
 	"github.com/spf13/cobra"
 )
 
@@ -38,6 +40,8 @@ func Command() *cobra.Command {
 	cmd.AddCommand(securitygroup.Command())
 	cmd.AddCommand(asg.Command())
 	cmd.AddCommand(tag.Command())
+	cmd.AddCommand(eip.Command())
+	cmd.AddCommand(volume.Command())
 	return &cmd
 }
 
