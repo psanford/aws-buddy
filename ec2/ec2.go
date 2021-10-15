@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/psanford/aws-buddy/config"
+	"github.com/psanford/aws-buddy/ec2/ami"
 	"github.com/psanford/aws-buddy/ec2/asg"
 	"github.com/psanford/aws-buddy/ec2/eip"
 	"github.com/psanford/aws-buddy/ec2/instance"
@@ -42,6 +43,7 @@ func Command() *cobra.Command {
 	cmd.AddCommand(tag.Command())
 	cmd.AddCommand(eip.Command())
 	cmd.AddCommand(volume.Command())
+	cmd.AddCommand(ami.Command())
 	return &cmd
 }
 
@@ -60,6 +62,7 @@ func ec2ListCommand() *cobra.Command {
 
 	return &cmd
 }
+
 func ec2ListAction(cmd *cobra.Command, args []string) {
 	showInstances(nil)
 }
