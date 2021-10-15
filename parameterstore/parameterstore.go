@@ -29,6 +29,7 @@ func Command() *cobra.Command {
 	cmd.AddCommand(paramGetCommand())
 	cmd.AddCommand(paramPutCommand())
 	cmd.AddCommand(paramCpCommand())
+	cmd.AddCommand(paramRmCommand())
 
 	return &cmd
 }
@@ -204,5 +205,49 @@ func paramCp(cmd *cobra.Command, args []string) {
 	_, err = ssmClient.PutParameter(&input)
 	if err != nil {
 		log.Fatalf("PutParameter err: %s", err)
+	}
+}
+
+func paramRmCommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "rm",
+		Short: "Delete param at path",
+		Run:   paramRm,
+	}
+
+	return &cmd
+}
+
+func paramRm(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		log.Fatalf("Usage: rm <some/path/to/delete>")
+	}
+
+	ssmClient := ssm.New(config.Session())
+
+	path := args[0]
+
+	resp, err := ssmClient.GetParameter(&ssm.GetParameterInput{
+		Name:           &path,
+		WithDecryption: aws.Bool(true),
+	})
+	if err != nil {
+		log.Fatalf("GetParameter err: %s", err)
+	}
+
+	fmt.Printf("param %s (%s) => *deleted\n\n", path, *resp.Parameter.Value)
+
+	ok := console.Confirm("Are you sure you want to make this change [yN]? ")
+	if !ok {
+		log.Fatalln("Aborting")
+	}
+
+	input := ssm.DeleteParameterInput{
+		Name: &path,
+	}
+
+	_, err = ssmClient.DeleteParameter(&input)
+	if err != nil {
+		log.Fatalf("DeleteParameter err: %s", err)
 	}
 }
