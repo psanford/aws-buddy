@@ -16,6 +16,8 @@ import (
 	"github.com/psanford/aws-buddy/ec2/asg"
 	"github.com/psanford/aws-buddy/ec2/eip"
 	"github.com/psanford/aws-buddy/ec2/instance"
+	"github.com/psanford/aws-buddy/ec2/launch"
+	"github.com/psanford/aws-buddy/ec2/launchtemplate"
 	"github.com/psanford/aws-buddy/ec2/securitygroup"
 	"github.com/psanford/aws-buddy/ec2/tag"
 	"github.com/psanford/aws-buddy/ec2/volume"
@@ -44,6 +46,8 @@ func Command() *cobra.Command {
 	cmd.AddCommand(eip.Command())
 	cmd.AddCommand(volume.Command())
 	cmd.AddCommand(ami.Command())
+	cmd.AddCommand(launchtemplate.Command())
+	cmd.AddCommand(launch.Command())
 	return &cmd
 }
 
