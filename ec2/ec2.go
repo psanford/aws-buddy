@@ -157,16 +157,20 @@ func showInstances(input *ec2.DescribeInstancesInput) {
 				}
 
 				if verboseOutput {
+					var arn string
+					if inst.IamInstanceProfile != nil && inst.IamInstanceProfile.Arn != nil {
+						arn = *inst.IamInstanceProfile.Arn
+					}
 					fmt.Printf("========[ %s ]===================\n", *inst.InstanceId)
 					fmt.Printf("name     : %s\n", name)
 					fmt.Printf("id       : %s\n", *inst.InstanceId)
 					fmt.Printf("type     : %s\n", *inst.InstanceType)
 					fmt.Printf("az       : %s\n", az)
-					fmt.Printf("state    : %s\n", *inst.State.Name)
+					fmt.Printf("state    : %s\n", state)
 					fmt.Printf("priv IPs : %s\n", strings.Join(privateIPs, ","))
 					fmt.Printf("pub  IPs : %s\n", strings.Join(publicIPs, ","))
 					fmt.Printf("SGs      : %s\n", strings.Join(securityGroupNameIDs, ","))
-					fmt.Printf("Profile  : %s\n", *inst.IamInstanceProfile.Arn)
+					fmt.Printf("Profile  : %s\n", arn)
 					fmt.Printf("Launch   : %s\n", inst.LaunchTime.Format(time.RFC3339))
 					fmt.Printf("IFaces   : %s\n", strings.Join(ifaces, ";"))
 					fmt.Printf("Tags     : %v\n", tags)
