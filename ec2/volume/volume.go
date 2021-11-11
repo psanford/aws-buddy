@@ -1,6 +1,7 @@
 package volume
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -14,6 +15,7 @@ import (
 
 var (
 	jsonOutput bool
+	csvOutput  bool
 )
 
 func Command() *cobra.Command {
@@ -36,6 +38,7 @@ func volumeListCommand() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVarP(&jsonOutput, "json", "", false, "Show raw json ouput")
+	cmd.Flags().BoolVarP(&csvOutput, "csv", "", false, "Output as csv")
 
 	return &cmd
 }
@@ -45,6 +48,8 @@ func volumeListAction(cmd *cobra.Command, args []string) {
 
 	jsonOut := json.NewEncoder(os.Stdout)
 	jsonOut.SetIndent("", "  ")
+
+	csvOut := csv.NewWriter(os.Stdout)
 
 	err := ec2Svc.DescribeVolumesPages(&ec2.DescribeVolumesInput{}, func(dvo *ec2.DescribeVolumesOutput, b bool) bool {
 		for _, vol := range dvo.Volumes {
@@ -57,15 +62,23 @@ func volumeListAction(cmd *cobra.Command, args []string) {
 			for _, attach := range vol.Attachments {
 				instances = append(instances, *attach.InstanceId)
 			}
-			enc := "-"
+			enc := "unencrypted"
 			if vol.Encrypted != nil && *vol.Encrypted {
-				enc = "enc"
+				enc = "encrypted"
 			}
-			fmt.Printf("%20.20s %3s %s\n", *vol.VolumeId, enc, strings.Join(instances, ","))
+			if csvOutput {
+				csvOut.Write([]string{*vol.VolumeId, enc, strings.Join(instances, ",")})
+			} else {
+				fmt.Printf("%20.20s %3s %s\n", *vol.VolumeId, enc, strings.Join(instances, ","))
+			}
 		}
 		return true
 	})
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if csvOutput {
+		csvOut.Flush()
 	}
 }
