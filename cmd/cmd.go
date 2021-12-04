@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	awssession "github.com/aws/aws-sdk-go/aws/session"
+	"github.com/psanford/aws-buddy/awsconfig"
 	"github.com/psanford/aws-buddy/cost"
 	"github.com/psanford/aws-buddy/ec2"
 	"github.com/psanford/aws-buddy/iam"
@@ -39,6 +40,7 @@ func Execute() error {
 	rootCmd.AddCommand(cost.Command())
 	rootCmd.AddCommand(iam.Command())
 	rootCmd.AddCommand(parameterstore.Command())
+	rootCmd.AddCommand(awsconfig.Command())
 	rootCmd.AddCommand(completionCommand())
 
 	return rootCmd.Execute()
