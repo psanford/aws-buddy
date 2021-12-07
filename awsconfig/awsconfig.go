@@ -60,7 +60,6 @@ WHERE
 `
 
 	query := fmt.Sprintf(queryTmpl, publicIP)
-	fmt.Printf("query: <%s>\n", query)
 
 	input := &configservice.SelectAggregateResourceConfigInput{
 		ConfigurationAggregatorName: &aggregatorName,
@@ -68,7 +67,7 @@ WHERE
 	}
 	err := svc.SelectAggregateResourceConfigPages(input, func(resp *configservice.SelectAggregateResourceConfigOutput, b bool) bool {
 		for _, result := range resp.Results {
-			fmt.Println(result)
+			fmt.Println(*result)
 		}
 
 		return true
