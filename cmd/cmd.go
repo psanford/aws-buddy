@@ -14,6 +14,7 @@ import (
 	"github.com/psanford/aws-buddy/org"
 	"github.com/psanford/aws-buddy/parameterstore"
 	"github.com/psanford/aws-buddy/route53"
+	"github.com/psanford/aws-buddy/s3"
 	"github.com/spf13/cobra"
 )
 
@@ -35,6 +36,7 @@ func Execute() error {
 	os.Setenv("AWS_DEFAULT_REGION", region)
 
 	rootCmd.AddCommand(ec2.Command())
+	rootCmd.AddCommand(s3.Command())
 	rootCmd.AddCommand(org.Command())
 	rootCmd.AddCommand(route53.Command())
 	rootCmd.AddCommand(cost.Command())
