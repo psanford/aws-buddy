@@ -88,13 +88,14 @@ func launchAction(cmd *cobra.Command, args []string) {
 	svc := ec2.New(config.Session())
 
 	runCfg := &ec2.RunInstancesInput{
-		InstanceType:     &cfg.InstanceType,
-		ImageId:          &matchAMI.ID,
-		SecurityGroupIds: aws.StringSlice([]string{sgID}),
-		SubnetId:         &cfg.Subnet,
-		KeyName:          &cfg.KeyPair,
-		MinCount:         aws.Int64(1),
-		MaxCount:         aws.Int64(1),
+		InstanceType:                      &cfg.InstanceType,
+		ImageId:                           &matchAMI.ID,
+		SecurityGroupIds:                  aws.StringSlice([]string{sgID}),
+		SubnetId:                          &cfg.Subnet,
+		KeyName:                           &cfg.KeyPair,
+		MinCount:                          aws.Int64(1),
+		MaxCount:                          aws.Int64(1),
+		InstanceInitiatedShutdownBehavior: aws.String(ec2.ShutdownBehaviorTerminate),
 		TagSpecifications: []*ec2.TagSpecification{
 			{
 				ResourceType: aws.String("instance"),
