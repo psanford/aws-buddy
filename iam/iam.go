@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"time"
 
@@ -238,6 +239,29 @@ func iamShowUser(cmd *cobra.Command, args []string) {
 	err = iamSvc.ListAttachedUserPoliciesPages(&listAttachedInput, func(laupo *iam.ListAttachedUserPoliciesOutput, b bool) bool {
 		for _, p := range laupo.AttachedPolicies {
 			fmt.Printf("%s : %s\n", *p.PolicyArn, *p.PolicyName)
+			policyInfo, err := iamSvc.GetPolicy(&iam.GetPolicyInput{
+				PolicyArn: p.PolicyArn,
+			})
+			if err != nil {
+				log.Printf("Get policy info err: %s", err)
+				continue
+			}
+			policyDoc, err := iamSvc.GetPolicyVersion(&iam.GetPolicyVersionInput{
+				PolicyArn: p.PolicyArn,
+				VersionId: policyInfo.Policy.DefaultVersionId,
+			})
+			if err != nil {
+				log.Printf("Get policy doc err: %s", err)
+				continue
+			}
+			doc, err := url.QueryUnescape(*policyDoc.PolicyVersion.Document)
+			if err != nil {
+				log.Printf("Decode policy doc err: %s", err)
+				continue
+			}
+
+			fmt.Printf("========[ policy %s ]===================\n", *p.PolicyArn)
+			fmt.Printf("%s\n", doc)
 		}
 		return true
 	})
