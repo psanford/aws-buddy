@@ -40,6 +40,7 @@ func iamUserCommand() *cobra.Command {
 
 	cmd.AddCommand(iamUserListCommand())
 	cmd.AddCommand(iamUserShowCommand())
+	cmd.AddCommand(listAccessKeysCommand())
 
 	return &cmd
 }
@@ -299,5 +300,41 @@ func iamShowUser(cmd *cobra.Command, args []string) {
 	})
 	if err != nil {
 		log.Fatalf("List user groups err: %s", err)
+	}
+}
+
+func listAccessKeysCommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "list_access_keys",
+		Short: "List all access keys in account",
+		Run:   listAccessKeysAction,
+	}
+
+	return &cmd
+}
+
+func listAccessKeysAction(cmd *cobra.Command, args []string) {
+	iamSvc := iam.New(config.Session())
+
+	fmt.Printf("%20s %8s %30s %s\n", "key_id", "status", "creation", "user_arn")
+
+	err := iamSvc.ListUsersPages(&iam.ListUsersInput{}, func(out *iam.ListUsersOutput, b bool) bool {
+		for _, user := range out.Users {
+			keysResp, err := iamSvc.ListAccessKeys(&iam.ListAccessKeysInput{
+				UserName: user.UserName,
+			})
+			if err != nil {
+				log.Printf("ListAccessKeys err for %s: %s", *user.UserName, err)
+				continue
+			}
+
+			for _, k := range keysResp.AccessKeyMetadata {
+				fmt.Printf("%20s %8s %30s %s\n", *k.AccessKeyId, *k.Status, k.CreateDate, *user.Arn)
+			}
+		}
+		return true
+	})
+	if err != nil {
+		log.Fatal(err)
 	}
 }
