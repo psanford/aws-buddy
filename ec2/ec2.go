@@ -227,7 +227,7 @@ func shortState(state string) string {
 	if state == "stopping" {
 		state = "sin"
 	} else if state == "stopped" {
-		state = "sed"
+		state = "stp"
 	} else {
 		state = state[:3]
 	}

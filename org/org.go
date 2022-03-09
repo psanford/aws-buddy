@@ -22,6 +22,7 @@ var (
 	assumeRoleName  string
 	orgListFileName string
 	externalCommand string
+	includeAccts    bool
 )
 
 func Command() *cobra.Command {
@@ -32,6 +33,7 @@ func Command() *cobra.Command {
 
 	cmd.AddCommand(orgListAccountsCommand())
 	cmd.AddCommand(orgEachAccountCommand())
+	cmd.AddCommand(orgListOrgUnitsCommand())
 
 	return &cmd
 }
@@ -208,6 +210,85 @@ func orgEachAccountAction(cmd *cobra.Command, args []string) {
 			log.Print(err)
 		}
 		os.Exit(1)
+	}
+}
+
+func orgListOrgUnitsCommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "list-ou-tree",
+		Short: "List organizational units",
+		Run:   orgListOrgUnitsAction,
+	}
+
+	cmd.Flags().BoolVarP(&includeAccts, "include-accts", "", false, "Include Child accounts")
+
+	return &cmd
+}
+
+func orgListOrgUnitsAction(cmd *cobra.Command, args []string) {
+	svc := organizations.New(config.Session())
+
+	jsonOut := json.NewEncoder(os.Stdout)
+	jsonOut.SetIndent("", "  ")
+
+	lri := organizations.ListRootsInput{}
+	depth := -1
+	err := svc.ListRootsPages(&lri, func(lro *organizations.ListRootsOutput, b bool) bool {
+		depth += 1
+		defer func() { depth -= 1 }()
+
+		var handleOU func(loufpo *organizations.ListOrganizationalUnitsForParentOutput, b bool) bool
+		handleOU = func(loufpo *organizations.ListOrganizationalUnitsForParentOutput, b bool) bool {
+			depth += 1
+			defer func() { depth -= 1 }()
+
+			for _, ou := range loufpo.OrganizationalUnits {
+				fmt.Printf("%s%s %s\n", strings.Repeat(" ", depth), *ou.Id, *ou.Name)
+
+				if includeAccts {
+					lafp := organizations.ListAccountsForParentInput{
+						ParentId: ou.Id,
+					}
+					err := svc.ListAccountsForParentPages(&lafp, func(lafpo *organizations.ListAccountsForParentOutput, b bool) bool {
+						for _, acct := range lafpo.Accounts {
+							fmt.Printf("%s%s %s\n", strings.Repeat(" ", depth+1), *acct.Id, *acct.Name)
+						}
+						return true
+					})
+					if err != nil {
+						log.Fatalf("list accounts for parent err: %s", err)
+					}
+				}
+
+				loufpi := organizations.ListOrganizationalUnitsForParentInput{
+					ParentId: ou.Id,
+				}
+				err := svc.ListOrganizationalUnitsForParentPages(&loufpi, handleOU)
+				if err != nil {
+					log.Fatalf("list ou for parent err: %s", err)
+				}
+			}
+
+			return true
+		}
+
+		loufpo := organizations.ListOrganizationalUnitsForParentOutput{
+			OrganizationalUnits: make([]*organizations.OrganizationalUnit, len(lro.Roots)),
+		}
+
+		for i, ou := range lro.Roots {
+			loufpo.OrganizationalUnits[i] = &organizations.OrganizationalUnit{
+				Arn:  ou.Arn,
+				Id:   ou.Id,
+				Name: ou.Name,
+			}
+		}
+
+		handleOU(&loufpo, true)
+		return true
+	})
+	if err != nil {
+		log.Fatalf("list roots err: %s", err)
 	}
 }
 
