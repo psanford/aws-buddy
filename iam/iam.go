@@ -29,6 +29,7 @@ func Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(iamUserCommand())
+	cmd.AddCommand(iamGetAccountAuthorizationDetailsCommand())
 
 	return &cmd
 }
@@ -366,5 +367,115 @@ func listAccessKeysAction(cmd *cobra.Command, args []string) {
 	})
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func iamGetAccountAuthorizationDetailsCommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "account-authorization-datails",
+		Short: "Get snapshot of account permissions",
+		Run:   iamGetAccountAuthorizationDetailsAction,
+	}
+
+	return &cmd
+}
+
+func iamGetAccountAuthorizationDetailsAction(cmd *cobra.Command, args []string) {
+	iamSvc := iam.New(config.Session())
+
+	jsonOut := json.NewEncoder(os.Stdout)
+	jsonOut.SetIndent("", "  ")
+
+	type IamObject struct {
+		Type   string                   `json:"type"`
+		Group  *iam.GroupDetail         `json:"group,omitempty"`
+		Policy *iam.ManagedPolicyDetail `json:"policy,omitempty"`
+		Role   *iam.RoleDetail          `json:"role,omitempty"`
+		User   *iam.UserDetail          `json:"user,omitempty"`
+	}
+
+	input := &iam.GetAccountAuthorizationDetailsInput{}
+	err := iamSvc.GetAccountAuthorizationDetailsPages(input, func(details *iam.GetAccountAuthorizationDetailsOutput, b bool) bool {
+		for _, g := range details.GroupDetailList {
+			for _, pol := range g.GroupPolicyList {
+				if pol.PolicyDocument != nil {
+					doc, err := url.QueryUnescape(*pol.PolicyDocument)
+					if err != nil {
+						log.Fatalf("Unescape group policy doc err doc=%q err=%s", *pol.PolicyDocument, err)
+					}
+					pol.PolicyDocument = &doc
+				}
+			}
+			jsonOut.Encode(IamObject{
+				Type:  "group",
+				Group: g,
+			})
+		}
+		for _, m := range details.Policies {
+			for _, pol := range m.PolicyVersionList {
+				if pol.Document != nil {
+					doc, err := url.QueryUnescape(*pol.Document)
+					if err != nil {
+						log.Fatalf("Unescape policy doc err doc=%q err=%s", *pol.Document, err)
+					}
+					pol.Document = &doc
+				}
+			}
+			jsonOut.Encode(IamObject{
+				Type:   "policy",
+				Policy: m,
+			})
+		}
+		for _, r := range details.RoleDetailList {
+			if r.AssumeRolePolicyDocument != nil {
+				doc, err := url.QueryUnescape(*r.AssumeRolePolicyDocument)
+				if err != nil {
+					log.Fatalf("Unescape assume role policy doc err doc=%q err=%s", *r.AssumeRolePolicyDocument, err)
+				}
+				r.AssumeRolePolicyDocument = &doc
+			}
+			for _, ip := range r.InstanceProfileList {
+				for _, ipr := range ip.Roles {
+					if ipr.AssumeRolePolicyDocument != nil {
+						doc, err := url.QueryUnescape(*ipr.AssumeRolePolicyDocument)
+						if err != nil {
+							log.Fatalf("Unescape assume role policy doc err doc=%q err=%s", *ipr.AssumeRolePolicyDocument, err)
+						}
+						ipr.AssumeRolePolicyDocument = &doc
+					}
+				}
+			}
+			for _, pol := range r.RolePolicyList {
+				if pol.PolicyDocument != nil {
+					doc, err := url.QueryUnescape(*pol.PolicyDocument)
+					if err != nil {
+						log.Fatalf("Unescape policy doc err doc=%q err=%s", *pol.PolicyDocument, err)
+					}
+					pol.PolicyDocument = &doc
+				}
+			}
+			jsonOut.Encode(IamObject{
+				Type: "role",
+				Role: r,
+			})
+		}
+		for _, u := range details.UserDetailList {
+			for _, pol := range u.UserPolicyList {
+				doc, err := url.QueryUnescape(*pol.PolicyDocument)
+				if err != nil {
+					log.Fatalf("Unescape policy doc err doc=%q err=%s", *pol.PolicyDocument, err)
+				}
+				pol.PolicyDocument = &doc
+			}
+			jsonOut.Encode(IamObject{
+				Type: "user",
+				User: u,
+			})
+		}
+		return true
+	})
+
+	if err != nil {
+		log.Fatalf("GetAccountAuthorizationDetails err: %s", err)
 	}
 }
