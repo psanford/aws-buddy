@@ -221,7 +221,13 @@ func iamShowUser(cmd *cobra.Command, args []string) {
 			}
 
 			fmt.Printf("========[ policy %s ]===================\n", *pname)
-			fmt.Printf("%s\n", *gotPolicy.PolicyDocument)
+			doc, err := url.QueryUnescape(*gotPolicy.PolicyDocument)
+			if err != nil {
+				log.Printf("Decode policy doc err: %s", err)
+				continue
+			}
+
+			fmt.Printf("%s\n", doc)
 		}
 
 		return true
