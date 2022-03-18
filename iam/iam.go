@@ -30,7 +30,19 @@ func Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(iamUserCommand())
+	cmd.AddCommand(iamAccessCommand())
+
+	return &cmd
+}
+
+func iamAccessCommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "access",
+		Short: "Commands to help review access by iam principals",
+	}
+
 	cmd.AddCommand(iamGetAccountAuthorizationDetailsCommand())
+	cmd.AddCommand(testAllIamIdentitiesCommand())
 
 	return &cmd
 }
@@ -337,7 +349,7 @@ func iamShowUser(cmd *cobra.Command, args []string) {
 
 func listAccessKeysCommand() *cobra.Command {
 	cmd := cobra.Command{
-		Use:   "list_access_keys",
+		Use:   "list-access-keys",
 		Short: "List all access keys in account",
 		Run:   listAccessKeysAction,
 	}
@@ -528,6 +540,104 @@ func iamGetAccountAuthorizationDetailsAction(cmd *cobra.Command, args []string) 
 					User: u,
 				})
 			}
+		}
+		return true
+	})
+
+	if err != nil {
+		log.Fatalf("GetAccountAuthorizationDetails err: %s", err)
+	}
+}
+
+var (
+	principalActions []string
+	resoucesFlag     []string
+)
+
+func testAllIamIdentitiesCommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "test-all-iam-identites",
+		Short: "Test access permission to a action+resource for all iam identites in account",
+		Run:   testAllIamIdentitiesAction,
+	}
+
+	cmd.Flags().StringArrayVarP(&principalActions, "actions", "", nil, "List of api operations (e.g kms:Decrypt)")
+	cmd.Flags().StringArrayVarP(&resoucesFlag, "resources", "", nil, "Resources to test access against (e.g. arn:aws:kms:us-east-1:123456789012:key/e50f9eee-b521-47c8-8d67-3058d3409969")
+
+	return &cmd
+}
+
+func testAllIamIdentitiesAction(cmd *cobra.Command, args []string) {
+	iamSvc := iam.New(config.Session())
+
+	if len(principalActions) < 1 {
+		log.Fatalf("--actions is required")
+	}
+
+	if len(resoucesFlag) < 1 {
+		log.Fatalf("--resources is required")
+	}
+
+	actionNames := aws.StringSlice(principalActions)
+	resourceArns := aws.StringSlice(resoucesFlag)
+
+	csvOut := csv.NewWriter(os.Stdout)
+	defer csvOut.Flush()
+
+	input := &iam.GetAccountAuthorizationDetailsInput{}
+	err := iamSvc.GetAccountAuthorizationDetailsPages(input, func(details *iam.GetAccountAuthorizationDetailsOutput, b bool) bool {
+		for _, m := range details.Policies {
+			scpi := &iam.SimulateCustomPolicyInput{
+				ActionNames:     actionNames,
+				ResourceArns:    resourceArns,
+				PolicyInputList: make([]*string, 0, len(m.PolicyVersionList)),
+			}
+
+			for _, pol := range m.PolicyVersionList {
+				if pol.Document != nil {
+					doc, err := url.QueryUnescape(*pol.Document)
+					if err != nil {
+						log.Fatalf("Unescape policy doc err doc=%q err=%s", *pol.Document, err)
+					}
+
+					scpi.PolicyInputList = append(scpi.PolicyInputList, &doc)
+				}
+			}
+			simResult, err := iamSvc.SimulateCustomPolicy(scpi)
+			if err != nil {
+				log.Fatalf("Failed to simulate policy for %s: %s", *m.Arn, err)
+			}
+
+			for _, res := range simResult.EvaluationResults {
+				csvOut.Write([]string{*res.EvalDecision, *res.EvalActionName, *res.EvalResourceName, *m.Arn})
+				csvOut.Flush()
+			}
+		}
+
+		simulate := func(arn string) {
+			sppi := &iam.SimulatePrincipalPolicyInput{
+				ActionNames:     actionNames,
+				ResourceArns:    resourceArns,
+				PolicySourceArn: &arn,
+			}
+			simResult, err := iamSvc.SimulatePrincipalPolicy(sppi)
+			if err != nil {
+				log.Fatalf("Failed to simulate permission for %s: %s", arn, err)
+			}
+			for _, res := range simResult.EvaluationResults {
+				csvOut.Write([]string{*res.EvalDecision, *res.EvalActionName, *res.EvalResourceName, arn})
+				csvOut.Flush()
+			}
+		}
+
+		for _, g := range details.GroupDetailList {
+			simulate(*g.Arn)
+		}
+		for _, r := range details.RoleDetailList {
+			simulate(*r.Arn)
+		}
+		for _, u := range details.UserDetailList {
+			simulate(*u.Arn)
 		}
 		return true
 	})
