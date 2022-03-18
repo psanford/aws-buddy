@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -370,12 +371,16 @@ func listAccessKeysAction(cmd *cobra.Command, args []string) {
 	}
 }
 
+var filterPolicyMatch string
+
 func iamGetAccountAuthorizationDetailsCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "account-authorization-datails",
 		Short: "Get snapshot of account permissions",
 		Run:   iamGetAccountAuthorizationDetailsAction,
 	}
+
+	cmd.Flags().StringVarP(&filterPolicyMatch, "filter-by-policy-match", "", "", "Regex string to match on policy documents")
 
 	return &cmd
 }
@@ -394,9 +399,19 @@ func iamGetAccountAuthorizationDetailsAction(cmd *cobra.Command, args []string) 
 		User   *iam.UserDetail          `json:"user,omitempty"`
 	}
 
+	var filterMatch *regexp.Regexp
+	if filterPolicyMatch != "" {
+		re, err := regexp.Compile("(?i)" + filterPolicyMatch)
+		if err != nil {
+			log.Fatalf("-filter-by-policy-match doesn't compile as a Go regex: %s", err)
+		}
+		filterMatch = re
+	}
+
 	input := &iam.GetAccountAuthorizationDetailsInput{}
 	err := iamSvc.GetAccountAuthorizationDetailsPages(input, func(details *iam.GetAccountAuthorizationDetailsOutput, b bool) bool {
 		for _, g := range details.GroupDetailList {
+			include := filterMatch == nil
 			for _, pol := range g.GroupPolicyList {
 				if pol.PolicyDocument != nil {
 					doc, err := url.QueryUnescape(*pol.PolicyDocument)
@@ -404,14 +419,22 @@ func iamGetAccountAuthorizationDetailsAction(cmd *cobra.Command, args []string) 
 						log.Fatalf("Unescape group policy doc err doc=%q err=%s", *pol.PolicyDocument, err)
 					}
 					pol.PolicyDocument = &doc
+					if include == false && filterMatch != nil {
+						if filterMatch.MatchString(doc) {
+							include = true
+						}
+					}
 				}
 			}
-			jsonOut.Encode(IamObject{
-				Type:  "group",
-				Group: g,
-			})
+			if include {
+				jsonOut.Encode(IamObject{
+					Type:  "group",
+					Group: g,
+				})
+			}
 		}
 		for _, m := range details.Policies {
+			include := filterMatch == nil
 			for _, pol := range m.PolicyVersionList {
 				if pol.Document != nil {
 					doc, err := url.QueryUnescape(*pol.Document)
@@ -419,20 +442,34 @@ func iamGetAccountAuthorizationDetailsAction(cmd *cobra.Command, args []string) 
 						log.Fatalf("Unescape policy doc err doc=%q err=%s", *pol.Document, err)
 					}
 					pol.Document = &doc
+
+					if include == false && filterMatch != nil {
+						if filterMatch.MatchString(doc) {
+							include = true
+						}
+					}
 				}
 			}
-			jsonOut.Encode(IamObject{
-				Type:   "policy",
-				Policy: m,
-			})
+			if include {
+				jsonOut.Encode(IamObject{
+					Type:   "policy",
+					Policy: m,
+				})
+			}
 		}
 		for _, r := range details.RoleDetailList {
+			include := filterMatch == nil
 			if r.AssumeRolePolicyDocument != nil {
 				doc, err := url.QueryUnescape(*r.AssumeRolePolicyDocument)
 				if err != nil {
 					log.Fatalf("Unescape assume role policy doc err doc=%q err=%s", *r.AssumeRolePolicyDocument, err)
 				}
 				r.AssumeRolePolicyDocument = &doc
+				if include == false && filterMatch != nil {
+					if filterMatch.MatchString(doc) {
+						include = true
+					}
+				}
 			}
 			for _, ip := range r.InstanceProfileList {
 				for _, ipr := range ip.Roles {
@@ -442,6 +479,11 @@ func iamGetAccountAuthorizationDetailsAction(cmd *cobra.Command, args []string) 
 							log.Fatalf("Unescape assume role policy doc err doc=%q err=%s", *ipr.AssumeRolePolicyDocument, err)
 						}
 						ipr.AssumeRolePolicyDocument = &doc
+						if include == false && filterMatch != nil {
+							if filterMatch.MatchString(doc) {
+								include = true
+							}
+						}
 					}
 				}
 			}
@@ -452,25 +494,40 @@ func iamGetAccountAuthorizationDetailsAction(cmd *cobra.Command, args []string) 
 						log.Fatalf("Unescape policy doc err doc=%q err=%s", *pol.PolicyDocument, err)
 					}
 					pol.PolicyDocument = &doc
+					if include == false && filterMatch != nil {
+						if filterMatch.MatchString(doc) {
+							include = true
+						}
+					}
 				}
 			}
-			jsonOut.Encode(IamObject{
-				Type: "role",
-				Role: r,
-			})
+			if include {
+				jsonOut.Encode(IamObject{
+					Type: "role",
+					Role: r,
+				})
+			}
 		}
 		for _, u := range details.UserDetailList {
+			include := filterMatch == nil
 			for _, pol := range u.UserPolicyList {
 				doc, err := url.QueryUnescape(*pol.PolicyDocument)
 				if err != nil {
 					log.Fatalf("Unescape policy doc err doc=%q err=%s", *pol.PolicyDocument, err)
 				}
 				pol.PolicyDocument = &doc
+				if include == false && filterMatch != nil {
+					if filterMatch.MatchString(doc) {
+						include = true
+					}
+				}
 			}
-			jsonOut.Encode(IamObject{
-				Type: "user",
-				User: u,
-			})
+			if include {
+				jsonOut.Encode(IamObject{
+					Type: "user",
+					User: u,
+				})
+			}
 		}
 		return true
 	})
