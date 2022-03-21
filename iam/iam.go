@@ -383,11 +383,13 @@ func listAccessKeysAction(cmd *cobra.Command, args []string) {
 	}
 }
 
-var filterPolicyMatch string
+var (
+	filterPolicyMatch string
+)
 
 func iamGetAccountAuthorizationDetailsCommand() *cobra.Command {
 	cmd := cobra.Command{
-		Use:   "account-authorization-datails",
+		Use:   "account-authorization-details",
 		Short: "Get snapshot of account permissions",
 		Run:   iamGetAccountAuthorizationDetailsAction,
 	}
