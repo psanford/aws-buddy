@@ -44,6 +44,7 @@ func Execute() error {
 	rootCmd.AddCommand(parameterstore.Command())
 	rootCmd.AddCommand(awsconfig.Command())
 	rootCmd.AddCommand(completionCommand())
+	rootCmd.AddCommand(helpTreeCommand())
 
 	return rootCmd.Execute()
 }
@@ -63,6 +64,28 @@ To configure your bash shell to load completions for each session add to your ba
 `,
 		Run: func(cmd *cobra.Command, args []string) {
 			rootCmd.GenBashCompletion(os.Stdout)
+		},
+	}
+
+	return cmd
+}
+
+func helpTreeCommand() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:   "help-tree",
+		Short: "Print Help for all commands",
+		Run: func(cmd *cobra.Command, args []string) {
+			var printHelp func(cmd *cobra.Command)
+
+			printHelp = func(cmd *cobra.Command) {
+				fmt.Println("\n========================================")
+				cmd.Help()
+				for _, childCmd := range cmd.Commands() {
+					printHelp(childCmd)
+				}
+			}
+
+			printHelp(rootCmd)
 		},
 	}
 
