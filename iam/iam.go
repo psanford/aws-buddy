@@ -406,11 +406,8 @@ func iamGetAccountAuthorizationDetailsAction(cmd *cobra.Command, args []string) 
 	jsonOut.SetIndent("", "  ")
 
 	type IamObject struct {
-		Type   string                   `json:"type"`
-		Group  *iam.GroupDetail         `json:"group,omitempty"`
-		Policy *iam.ManagedPolicyDetail `json:"policy,omitempty"`
-		Role   *iam.RoleDetail          `json:"role,omitempty"`
-		User   *iam.UserDetail          `json:"user,omitempty"`
+		Type   string      `json:"type"`
+		Detail interface{} `json:"detail"`
 	}
 
 	var filterMatch *regexp.Regexp
@@ -442,8 +439,8 @@ func iamGetAccountAuthorizationDetailsAction(cmd *cobra.Command, args []string) 
 			}
 			if include {
 				jsonOut.Encode(IamObject{
-					Type:  "group",
-					Group: g,
+					Type:   "group",
+					Detail: g,
 				})
 			}
 		}
@@ -467,7 +464,7 @@ func iamGetAccountAuthorizationDetailsAction(cmd *cobra.Command, args []string) 
 			if include {
 				jsonOut.Encode(IamObject{
 					Type:   "policy",
-					Policy: m,
+					Detail: m,
 				})
 			}
 		}
@@ -517,8 +514,8 @@ func iamGetAccountAuthorizationDetailsAction(cmd *cobra.Command, args []string) 
 			}
 			if include {
 				jsonOut.Encode(IamObject{
-					Type: "role",
-					Role: r,
+					Type:   "role",
+					Detail: r,
 				})
 			}
 		}
@@ -538,8 +535,8 @@ func iamGetAccountAuthorizationDetailsAction(cmd *cobra.Command, args []string) 
 			}
 			if include {
 				jsonOut.Encode(IamObject{
-					Type: "user",
-					User: u,
+					Type:   "user",
+					Detail: u,
 				})
 			}
 		}
