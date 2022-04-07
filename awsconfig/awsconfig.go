@@ -15,16 +15,16 @@ func Command() *cobra.Command {
 		Short: "AWS Config Commands",
 	}
 
-	cmd.AddCommand(queryPublicIPCommand())
+	cmd.AddCommand(queryIPCommand())
 	cmd.AddCommand(queryResourceIDCommand())
 	return &cmd
 }
 
-func queryPublicIPCommand() *cobra.Command {
+func queryIPCommand() *cobra.Command {
 	cmd := cobra.Command{
-		Use:   "query_eni_by_public_ip",
-		Short: "Query for ENIs matching a public ip",
-		Run:   queryPublicIPAction,
+		Use:   "query_eni_by_ip",
+		Short: "Query for ENIs matching an ip",
+		Run:   queryIPAction,
 	}
 
 	cmd.Flags().StringVarP(&aggregatorName, "aggregator-name", "", "AllAccounts", "AWS Config Aggretator Name")
@@ -36,7 +36,7 @@ var (
 	aggregatorName string
 )
 
-func queryPublicIPAction(cmd *cobra.Command, args []string) {
+func queryIPAction(cmd *cobra.Command, args []string) {
 	if len(args) == 0 {
 		log.Fatalf("Usage: query_eni_by_public_ip <PUBLIC_IP>")
 	}
@@ -50,17 +50,18 @@ func queryPublicIPAction(cmd *cobra.Command, args []string) {
   resourceName,
   resourceType,
   tags,
-  configuration.privateIpAddress,
-  configuration.association.publicIp,
-  configuration.attachment.instanceId,
   availabilityZone,
+  relationships,
   configuration
 WHERE
   resourceType = 'AWS::EC2::NetworkInterface'
-  AND configuration.association.publicIp = '%s'
+  and (
+    configuration.association.publicIp = '%s'
+    or configuration.privateIpAddresses.privateIpAddress = '%s'
+  )
 `
 
-	query := fmt.Sprintf(queryTmpl, publicIP)
+	query := fmt.Sprintf(queryTmpl, publicIP, publicIP)
 
 	input := &configservice.SelectAggregateResourceConfigInput{
 		ConfigurationAggregatorName: &aggregatorName,
