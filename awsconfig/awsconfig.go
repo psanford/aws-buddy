@@ -17,6 +17,7 @@ func Command() *cobra.Command {
 
 	cmd.AddCommand(queryIPCommand())
 	cmd.AddCommand(queryResourceIDCommand())
+	cmd.AddCommand(resourceInventoryByTypeCommand())
 	return &cmd
 }
 
@@ -34,6 +35,7 @@ func queryIPCommand() *cobra.Command {
 
 var (
 	aggregatorName string
+	resourceType   string
 )
 
 func queryIPAction(cmd *cobra.Command, args []string) {
@@ -116,6 +118,55 @@ WHERE
 `
 
 	query := fmt.Sprintf(queryTmpl, resourceID)
+
+	input := &configservice.SelectAggregateResourceConfigInput{
+		ConfigurationAggregatorName: &aggregatorName,
+		Expression:                  &query,
+	}
+	err := svc.SelectAggregateResourceConfigPages(input, func(resp *configservice.SelectAggregateResourceConfigOutput, b bool) bool {
+		for _, result := range resp.Results {
+			fmt.Println(*result)
+		}
+
+		return true
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func resourceInventoryByTypeCommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "inventory_by_type",
+		Short: "List all config resources for a given type",
+		Run:   resourceInventoryByType,
+	}
+
+	cmd.Flags().StringVarP(&aggregatorName, "aggregator-name", "", "AllAccounts", "AWS Config Aggretator Name")
+	cmd.Flags().StringVarP(&resourceType, "type", "", "AWS::S3::Bucket", "Resource type (see https://docs.aws.amazon.com/config/latest/developerguide/resource-config-reference.html)")
+
+	return &cmd
+}
+
+func resourceInventoryByType(cmd *cobra.Command, args []string) {
+	// resource types https://docs.aws.amazon.com/config/latest/developerguide/resource-config-reference.html
+
+	svc := configservice.New(config.Session())
+
+	queryTmpl := `
+SELECT
+  resourceId,
+  resourceName,
+  resourceType,
+  accountId,
+  arn,
+  tags,
+  availabilityZone
+WHERE
+  resourceType = '%s'
+`
+
+	query := fmt.Sprintf(queryTmpl, resourceType)
 
 	input := &configservice.SelectAggregateResourceConfigInput{
 		ConfigurationAggregatorName: &aggregatorName,
