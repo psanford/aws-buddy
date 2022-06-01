@@ -3,6 +3,7 @@ package awsconfig
 import (
 	"fmt"
 	"log"
+	"sort"
 
 	"github.com/aws/aws-sdk-go/service/configservice"
 	"github.com/psanford/aws-buddy/config"
@@ -18,6 +19,7 @@ func Command() *cobra.Command {
 	cmd.AddCommand(queryIPCommand())
 	cmd.AddCommand(queryResourceIDCommand())
 	cmd.AddCommand(resourceInventoryByTypeCommand())
+	cmd.AddCommand(listResourceTypesCommand())
 	return &cmd
 }
 
@@ -135,6 +137,24 @@ WHERE
 	}
 }
 
+func listResourceTypesCommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "resource_types",
+		Short: "List the resource types for aws config",
+		Run:   listResourceTypes,
+	}
+
+	return &cmd
+}
+
+func listResourceTypes(cmd *cobra.Command, args []string) {
+	types := configservice.ResourceType_Values()
+	sort.Strings(types)
+	for _, t := range types {
+		fmt.Println(t)
+	}
+}
+
 func resourceInventoryByTypeCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "inventory_by_type",
@@ -143,7 +163,7 @@ func resourceInventoryByTypeCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&aggregatorName, "aggregator-name", "", "AllAccounts", "AWS Config Aggretator Name")
-	cmd.Flags().StringVarP(&resourceType, "type", "", "AWS::S3::Bucket", "Resource type (see https://docs.aws.amazon.com/config/latest/developerguide/resource-config-reference.html)")
+	cmd.Flags().StringVarP(&resourceType, "type", "", "AWS::S3::Bucket", "Resource type (aws-buddy config resource_types)")
 
 	return &cmd
 }
