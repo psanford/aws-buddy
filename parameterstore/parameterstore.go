@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ssm"
@@ -110,14 +111,27 @@ func paramPutCommand() *cobra.Command {
 }
 
 func paramPut(cmd *cobra.Command, args []string) {
-	if len(args) != 2 {
-		log.Fatalf("Usage: get <path/to/parameter> <value>")
+	if len(args) < 1 {
+		log.Fatalf("Usage: get <path/to/parameter> [<value>]")
+	}
+	name := args[0]
+	var value string
+	if len(args) < 2 {
+		fmt.Print("Enter value: ")
+		var result string
+		fmt.Scanln(&result)
+
+		result = strings.TrimSpace(result)
+		if result == "" {
+			fmt.Fprintf(os.Stderr, "No value provided, not saving")
+			os.Exit(1)
+		}
+		value = result
+	} else {
+		value = args[1]
 	}
 
 	ssmClient := ssm.New(config.Session())
-
-	name := args[0]
-	value := args[1]
 
 	resp, err := ssmClient.GetParameter(&ssm.GetParameterInput{
 		Name:           &name,
