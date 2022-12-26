@@ -21,6 +21,7 @@ import (
 	"github.com/psanford/aws-buddy/ec2/launchtemplate"
 	"github.com/psanford/aws-buddy/ec2/securitygroup"
 	"github.com/psanford/aws-buddy/ec2/tag"
+	"github.com/psanford/aws-buddy/ec2/terminate"
 	"github.com/psanford/aws-buddy/ec2/volume"
 	"github.com/spf13/cobra"
 )
@@ -50,6 +51,7 @@ func Command() *cobra.Command {
 	cmd.AddCommand(ami.Command())
 	cmd.AddCommand(launchtemplate.Command())
 	cmd.AddCommand(launch.Command())
+	cmd.AddCommand(terminate.Command())
 	return &cmd
 }
 
