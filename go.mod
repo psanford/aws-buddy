@@ -8,5 +8,6 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/psanford/ubuntuami v0.0.0-20210501225706-f7b3ba0cf655
 	github.com/spf13/cobra v0.0.6
+	golang.org/x/tools v0.4.0
 	gopkg.in/yaml.v2 v2.2.8
 )
