@@ -92,9 +92,13 @@ func launchTemplateAction(cmd *cobra.Command, args []string) {
 		SecurityGroups:       securityGroups,
 		Subnets:              subnets,
 		KeyPairs:             keyPairs,
-		DefaultKeyPair:       keyPairs[0],
 		DefaultSubnet:        strings.Fields(subnets[rand.Intn(len(subnets))])[0],
 		DefaultSecurityGroup: defaultSG,
+	}
+
+	if len(keyPairs) > 0 {
+		cfg.DefaultKeyPair = keyPairs[0]
+
 	}
 
 	err = tmpl.Execute(f, cfg)
@@ -119,7 +123,7 @@ var tmpl = template.Must(template.New("tmpl").Parse(tmplText))
 
 var tmplText = `name: {{.Name}}
 
-instance_type: t4g.nano
+instance_type: t4g.small
 {{range .SecurityGroups}}
 # {{.}}
 {{- end}}
@@ -133,5 +137,14 @@ subnet: {{.DefaultSubnet}}
 {{- end}}
 key_pair: {{.DefaultKeyPair}}
 
-ubuntu_release: 20.04
+ubuntu_release: 22.04
+
+# user_data script content
+# see CloudInit docs for details
+# user_data: > #!/bin/bash
+# set -x
+# mkdir -p /home/ubuntu/.ssh/
+# curl https://api.sanford.io/sshkeys/ > /home/ubuntu/.ssh/authorized_keys
+# chmod 400 /home/ubuntu/.ssh/authorized_keys
+# chown ubuntu:ubuntu /home/ubuntu/.ssh/authorized_keys
 `

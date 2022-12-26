@@ -1,6 +1,8 @@
 package launch
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"os"
@@ -92,7 +94,6 @@ func launchAction(cmd *cobra.Command, args []string) {
 		ImageId:                           &matchAMI.ID,
 		SecurityGroupIds:                  aws.StringSlice([]string{sgID}),
 		SubnetId:                          &cfg.Subnet,
-		KeyName:                           &cfg.KeyPair,
 		MinCount:                          aws.Int64(1),
 		MaxCount:                          aws.Int64(1),
 		InstanceInitiatedShutdownBehavior: aws.String(ec2.ShutdownBehaviorTerminate),
@@ -108,6 +109,20 @@ func launchAction(cmd *cobra.Command, args []string) {
 			},
 		},
 	}
+
+	if cfg.KeyPair != "" {
+		runCfg.KeyName = &cfg.KeyPair
+	}
+
+	if cfg.UserData != "" {
+		var buf bytes.Buffer
+		enc := base64.NewEncoder(base64.StdEncoding, &buf)
+		enc.Write([]byte(cfg.UserData))
+		enc.Close()
+		ud := buf.String()
+		runCfg.UserData = &ud
+	}
+
 	r, err := svc.RunInstances(runCfg)
 	if err != nil {
 		log.Fatalf("RunInstances err: %s", err)
@@ -123,6 +138,7 @@ type launchCfg struct {
 	Subnet        string `yaml:"subnet"`
 	UbuntuRelease string `yaml:"ubuntu_release"`
 	KeyPair       string `yaml:"key_pair"`
+	UserData      string `yaml:"user_data"`
 }
 
 var gravitonRe = regexp.MustCompile(`\dg`)
