@@ -141,10 +141,10 @@ ubuntu_release: 22.04
 
 # user_data script content
 # see CloudInit docs for details
-# user_data: > #!/bin/bash
-# set -x
-# mkdir -p /home/ubuntu/.ssh/
-# curl https://api.sanford.io/sshkeys/ > /home/ubuntu/.ssh/authorized_keys
-# chmod 400 /home/ubuntu/.ssh/authorized_keys
-# chown ubuntu:ubuntu /home/ubuntu/.ssh/authorized_keys
-`
+# user_data: |
+#   #!/bin/bash
+#   set -x
+#   mkdir -p /home/ubuntu/.ssh/
+#   curl https://api.sanford.io/sshkeys/ > /home/ubuntu/.ssh/authorized_keys
+#   chmod 400 /home/ubuntu/.ssh/authorized_keys
+#   chown ubuntu:ubuntu /home/ubuntu/.ssh/authorized_keys
