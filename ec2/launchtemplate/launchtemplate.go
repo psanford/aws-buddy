@@ -148,3 +148,4 @@ ubuntu_release: 22.04
 #   curl https://api.sanford.io/sshkeys/ > /home/ubuntu/.ssh/authorized_keys
 #   chmod 400 /home/ubuntu/.ssh/authorized_keys
 #   chown ubuntu:ubuntu /home/ubuntu/.ssh/authorized_keys
+`
