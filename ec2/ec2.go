@@ -14,6 +14,7 @@ import (
 	"github.com/psanford/aws-buddy/config"
 	"github.com/psanford/aws-buddy/ec2/ami"
 	"github.com/psanford/aws-buddy/ec2/asg"
+	"github.com/psanford/aws-buddy/ec2/console"
 	"github.com/psanford/aws-buddy/ec2/eip"
 	"github.com/psanford/aws-buddy/ec2/eni"
 	"github.com/psanford/aws-buddy/ec2/instance"
@@ -52,6 +53,7 @@ func Command() *cobra.Command {
 	cmd.AddCommand(launchtemplate.Command())
 	cmd.AddCommand(launch.Command())
 	cmd.AddCommand(terminate.Command())
+	cmd.AddCommand(console.Command())
 	return &cmd
 }
 
