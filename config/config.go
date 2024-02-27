@@ -15,7 +15,12 @@ func Session() *awssession.Session {
 		region = os.Getenv("AWS_DEFAULT_REGION")
 	}
 
-	sess, err := awssession.NewSession(&aws.Config{Region: &region})
+	sess, err := awssession.NewSessionWithOptions(awssession.Options{
+		SharedConfigState: awssession.SharedConfigEnable,
+		Config: aws.Config{
+			Region: &region,
+		},
+	})
 	if err != nil {
 		panic(err)
 	}
