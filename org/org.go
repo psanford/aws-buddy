@@ -3,7 +3,6 @@ package org
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -34,6 +33,7 @@ func Command() *cobra.Command {
 	cmd.AddCommand(orgListAccountsCommand())
 	cmd.AddCommand(orgEachAccountCommand())
 	cmd.AddCommand(orgListOrgUnitsCommand())
+	cmd.AddCommand(scpCommand())
 
 	return &cmd
 }
@@ -120,7 +120,7 @@ func orgEachAccountAction(cmd *cobra.Command, args []string) {
 	var orgIDs []orgInfo
 
 	if orgListFileName != "" {
-		data, err := ioutil.ReadFile(orgListFileName)
+		data, err := os.ReadFile(orgListFileName)
 		if err != nil {
 			log.Fatalf("Read %s err: %s", orgListFileName, err)
 		}
