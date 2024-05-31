@@ -586,6 +586,7 @@ func testAllIamIdentitiesAction(cmd *cobra.Command, args []string) {
 	input := &iam.GetAccountAuthorizationDetailsInput{}
 	err := iamSvc.GetAccountAuthorizationDetailsPages(input, func(details *iam.GetAccountAuthorizationDetailsOutput, b bool) bool {
 		for _, m := range details.Policies {
+
 			scpi := &iam.SimulateCustomPolicyInput{
 				ActionNames:     actionNames,
 				ResourceArns:    resourceArns,
@@ -608,12 +609,12 @@ func testAllIamIdentitiesAction(cmd *cobra.Command, args []string) {
 			}
 
 			for _, res := range simResult.EvaluationResults {
-				csvOut.Write([]string{*res.EvalDecision, *res.EvalActionName, *res.EvalResourceName, *m.Arn})
+				csvOut.Write([]string{"simulate-policy", *res.EvalDecision, *res.EvalActionName, *res.EvalResourceName, *m.Arn})
 				csvOut.Flush()
 			}
 		}
 
-		simulate := func(arn string) {
+		simulateARN := func(arn string) {
 			sppi := &iam.SimulatePrincipalPolicyInput{
 				ActionNames:     actionNames,
 				ResourceArns:    resourceArns,
@@ -624,19 +625,52 @@ func testAllIamIdentitiesAction(cmd *cobra.Command, args []string) {
 				log.Fatalf("Failed to simulate permission for %s: %s", arn, err)
 			}
 			for _, res := range simResult.EvaluationResults {
-				csvOut.Write([]string{*res.EvalDecision, *res.EvalActionName, *res.EvalResourceName, arn})
+				csvOut.Write([]string{"simulate-principal", *res.EvalDecision, *res.EvalActionName, *res.EvalResourceName, arn})
 				csvOut.Flush()
 			}
 		}
 
+		simulatePolicies := func(arn string, policyList []*iam.PolicyDetail) {
+			if len(policyList) > 0 {
+				scpi := &iam.SimulateCustomPolicyInput{
+					ActionNames:     actionNames,
+					ResourceArns:    resourceArns,
+					PolicyInputList: make([]*string, 0, len(policyList)),
+				}
+
+				for _, pol := range policyList {
+					if pol.PolicyDocument != nil {
+						doc, err := url.QueryUnescape(*pol.PolicyDocument)
+						if err != nil {
+							log.Fatalf("Unescape policy doc err doc=%q err=%s", *pol.PolicyDocument, err)
+						}
+
+						scpi.PolicyInputList = append(scpi.PolicyInputList, &doc)
+					}
+				}
+				simResult, err := iamSvc.SimulateCustomPolicy(scpi)
+				if err != nil {
+					log.Fatalf("Failed to simulate policy for %s: %s", arn, err)
+				}
+
+				for _, res := range simResult.EvaluationResults {
+					csvOut.Write([]string{"policy-from-principal", *res.EvalDecision, *res.EvalActionName, *res.EvalResourceName, arn})
+					csvOut.Flush()
+				}
+			}
+		}
+
 		for _, g := range details.GroupDetailList {
-			simulate(*g.Arn)
+			simulateARN(*g.Arn)
+			simulatePolicies(*g.Arn, g.GroupPolicyList)
 		}
 		for _, r := range details.RoleDetailList {
-			simulate(*r.Arn)
+			simulateARN(*r.Arn)
+			simulatePolicies(*r.Arn, r.RolePolicyList)
 		}
 		for _, u := range details.UserDetailList {
-			simulate(*u.Arn)
+			simulateARN(*u.Arn)
+			simulatePolicies(*u.Arn, u.UserPolicyList)
 		}
 		return true
 	})
