@@ -18,6 +18,7 @@ func Command() *cobra.Command {
 	}
 
 	cmd.AddCommand(showENICommand())
+	cmd.AddCommand(listENICommand())
 
 	return &cmd
 }
@@ -51,6 +52,37 @@ func showENIAction(cmd *cobra.Command, args []string) {
 
 	input := &ec2.DescribeNetworkInterfacesInput{
 		NetworkInterfaceIds: aws.StringSlice(eniIDs),
+	}
+	err := svc.DescribeNetworkInterfacesPages(input, func(dnio *ec2.DescribeNetworkInterfacesOutput, b bool) bool {
+		for _, eni := range dnio.NetworkInterfaces {
+			jsonOut.Encode(eni)
+		}
+		return true
+	})
+	if err != nil {
+		log.Fatalf("DescribeNetworkInterfaces err: %s", err)
+	}
+}
+
+func listENICommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "list",
+		Short: "List eni devices",
+		Run:   listENIAction,
+	}
+	cmd.Flags().BoolVarP(&jsonOutput, "json", "", false, "List raw json ouput")
+
+	return &cmd
+}
+
+func listENIAction(cmd *cobra.Command, args []string) {
+	svc := ec2.New(config.Session())
+
+	jsonOut := json.NewEncoder(os.Stdout)
+	jsonOut.SetIndent("", "  ")
+
+	input := &ec2.DescribeNetworkInterfacesInput{
+		MaxResults: aws.Int64(500),
 	}
 	err := svc.DescribeNetworkInterfacesPages(input, func(dnio *ec2.DescribeNetworkInterfacesOutput, b bool) bool {
 		for _, eni := range dnio.NetworkInterfaces {
