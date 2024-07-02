@@ -101,7 +101,7 @@ func showInstances(input *ec2.DescribeInstancesInput) {
 		input = &ec2.DescribeInstancesInput{}
 	}
 	if len(input.InstanceIds) == 0 {
-		input.MaxResults = aws.Int64(1000)
+		input.MaxResults = aws.Int64(500)
 	}
 
 	if filterNameFlag != "" {
