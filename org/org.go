@@ -17,11 +17,12 @@ import (
 )
 
 var (
-	jsonOutput      bool
-	assumeRoleName  string
-	orgListFileName string
-	externalCommand string
-	includeAccts    bool
+	jsonOutput       bool
+	assumeRoleName   string
+	orgListFileName  string
+	externalCommand  string
+	includeAccts     bool
+	includeSuspended bool
 )
 
 func Command() *cobra.Command {
@@ -45,6 +46,7 @@ func orgListAccountsCommand() *cobra.Command {
 		Run:   orgListAccountsAction,
 	}
 
+	cmd.Flags().BoolVarP(&includeSuspended, "include-suspended", "", false, "Include suspended accounts")
 	cmd.Flags().BoolVarP(&jsonOutput, "json", "", false, "Show raw json ouput")
 
 	return &cmd
@@ -75,7 +77,18 @@ func orgListAccountsAction(cmd *cobra.Command, args []string) {
 			if jsonOutput {
 				jsonOut.Encode(account)
 			} else {
-				fmt.Printf("%s %s\n", *account.Id, *account.Name)
+				if *account.Status == "SUSPENDED" && !includeSuspended {
+					continue
+				}
+
+				status := *account.Status
+				if status == "ACTIVE" {
+					status = ""
+				} else {
+					status = " " + status
+				}
+
+				fmt.Printf("%s %s%s\n", *account.Id, *account.Name, status)
 			}
 		}
 
