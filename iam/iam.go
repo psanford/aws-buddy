@@ -31,6 +31,7 @@ func Command() *cobra.Command {
 
 	cmd.AddCommand(iamUserCommand())
 	cmd.AddCommand(iamAccessCommand())
+	cmd.AddCommand(identityCenterCommand())
 
 	return &cmd
 }

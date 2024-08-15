@@ -20,6 +20,7 @@ func scpCommand() *cobra.Command {
 
 	cmd.AddCommand(scpListCommand())
 	cmd.AddCommand(scpShowCommand())
+	cmd.AddCommand(scpDumpCommand())
 
 	return &cmd
 }
@@ -109,4 +110,73 @@ func scpShowAction(cmd *cobra.Command, args []string) {
 		log.Fatalf("Failed to format policy content: %s", err)
 	}
 	fmt.Println(string(contentJSON))
+}
+
+func scpDumpCommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "dump",
+		Short: "Dump all Service Control Policies",
+		Run:   scpDumpAction,
+	}
+
+	cmd.Flags().BoolVarP(&jsonOutput, "json", "", false, "Show raw json output")
+
+	return &cmd
+}
+
+func scpDumpAction(cmd *cobra.Command, args []string) {
+	svc := organizations.New(config.Session())
+
+	jsonOut := json.NewEncoder(os.Stdout)
+	jsonOut.SetIndent("", "  ")
+
+	err := svc.ListPoliciesPages(&organizations.ListPoliciesInput{
+		Filter: aws.String("SERVICE_CONTROL_POLICY"),
+	}, func(output *organizations.ListPoliciesOutput, lastPage bool) bool {
+		for _, policy := range output.Policies {
+			policyOutput, err := svc.DescribePolicy(&organizations.DescribePolicyInput{
+				PolicyId: policy.Id,
+			})
+
+			if err != nil {
+				log.Printf("Error describing policy %s: %s", *policy.Id, err)
+				continue
+			}
+
+			fullPolicy := policyOutput.Policy
+
+			if jsonOutput {
+				jsonOut.Encode(fullPolicy)
+			} else {
+				fmt.Printf("========[ %s ]===================\n", *fullPolicy.PolicySummary.Name)
+				fmt.Printf("id          : %s\n", *fullPolicy.PolicySummary.Id)
+				fmt.Printf("name        : %s\n", *fullPolicy.PolicySummary.Name)
+				fmt.Printf("description : %s\n", *fullPolicy.PolicySummary.Description)
+				fmt.Printf("type        : %s\n", *fullPolicy.PolicySummary.Type)
+				fmt.Printf("aws managed : %t\n", *fullPolicy.PolicySummary.AwsManaged)
+				fmt.Printf("Content     :\n")
+
+				var content any
+				err = json.Unmarshal([]byte(*fullPolicy.Content), &content)
+				if err != nil {
+					log.Printf("Failed to parse policy content for %s: %s", *fullPolicy.PolicySummary.Id, err)
+					continue
+				}
+
+				contentJSON, err := json.MarshalIndent(content, "", "  ")
+				if err != nil {
+					log.Printf("Failed to format policy content for %s: %s", *fullPolicy.PolicySummary.Id, err)
+					continue
+				}
+				fmt.Println(string(contentJSON))
+				fmt.Println()
+			}
+		}
+
+		return true
+	})
+
+	if err != nil {
+		log.Fatalf("ListPolicies error: %s", err)
+	}
 }
