@@ -15,6 +15,7 @@ import (
 	"github.com/psanford/aws-buddy/parameterstore"
 	"github.com/psanford/aws-buddy/route53"
 	"github.com/psanford/aws-buddy/s3"
+	"github.com/psanford/aws-buddy/sqs"
 	"github.com/psanford/aws-buddy/textract"
 	"github.com/spf13/cobra"
 )
@@ -44,6 +45,7 @@ func Execute() error {
 	rootCmd.AddCommand(iam.Command())
 	rootCmd.AddCommand(parameterstore.Command())
 	rootCmd.AddCommand(awsconfig.Command())
+	rootCmd.AddCommand(sqs.Command())
 	rootCmd.AddCommand(helpTreeCommand())
 	rootCmd.AddCommand(textract.Command())
 
