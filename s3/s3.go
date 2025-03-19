@@ -116,12 +116,21 @@ func headAction(cmd *cobra.Command, args []string) {
 	fmt.Printf("%s\n", out)
 }
 
+var (
+	recurseFlag bool
+	maxDepth    int
+)
+
 func lsCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "ls <[s3://]bucket/path/prefix>",
 		Short: "List objects",
 		Run:   lsAction,
 	}
+
+	cmd.Flags().BoolVarP(&recurseFlag, "recurse", "r", false, "Recurse into directories")
+	cmd.Flags().IntVarP(&maxDepth, "max-depth", "", 0, "Maximum recursion depth (0 = unlimited)")
+
 	return &cmd
 }
 
@@ -136,24 +145,49 @@ func lsAction(cmd *cobra.Command, args []string) {
 
 	input := &s3.ListObjectsV2Input{
 		Bucket:    &bucket,
-		Delimiter: aws.String("/"),
 		Prefix:    &prefix,
+		Delimiter: aws.String("/"),
 	}
 
-	err := svc.ListObjectsV2Pages(input, func(page *s3.ListObjectsV2Output, lastPage bool) bool {
-		for _, p := range page.CommonPrefixes {
-			dirName := strings.TrimPrefix(*p.Prefix, prefix)
-			fmt.Printf("  DIR %s\n", dirName)
-		}
+	if !recurseFlag {
+		maxDepth = 1
+	}
 
-		for _, obj := range page.Contents {
-			objName := strings.TrimPrefix(*obj.Key, prefix)
-			fmt.Printf("%s %15d %s\n", obj.LastModified.Format("2006/01/02 15:04"), *obj.Size, objName)
-		}
-		return true
-	})
+	listObjectsWithDepth(svc, input, prefix, 1, maxDepth)
+}
 
-	if err != nil {
-		log.Fatal(err)
+func listObjectsWithDepth(svc *s3.S3, input *s3.ListObjectsV2Input, basePrefix string, currentDepth, maxDepth int) {
+	if maxDepth == 0 || currentDepth <= maxDepth {
+
+		err := svc.ListObjectsV2Pages(input, func(page *s3.ListObjectsV2Output, lastPage bool) bool {
+			for _, obj := range page.Contents {
+				objName := strings.TrimPrefix(*obj.Key, basePrefix)
+				fmt.Printf("%s %15d %s\n", obj.LastModified.Format("2006/01/02 15:04"), *obj.Size, objName)
+			}
+
+			var directories []*s3.CommonPrefix
+
+			for _, p := range page.CommonPrefixes {
+				directories = append(directories, p)
+			}
+
+			for _, dir := range directories {
+				dirName := strings.TrimPrefix(*dir.Prefix, basePrefix)
+				fmt.Printf("  DIR %s\n", dirName)
+				newInput := &s3.ListObjectsV2Input{
+					Bucket:    input.Bucket,
+					Prefix:    dir.Prefix,
+					Delimiter: aws.String("/"),
+				}
+
+				listObjectsWithDepth(svc, newInput, basePrefix, currentDepth+1, maxDepth)
+			}
+
+			return true
+		})
+
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
