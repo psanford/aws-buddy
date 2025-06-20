@@ -20,6 +20,7 @@ func Command() *cobra.Command {
 
 	cmd.AddCommand(listCommand())
 	cmd.AddCommand(peekCommand())
+	cmd.AddCommand(consumeCommand())
 
 	return &cmd
 }
@@ -104,5 +105,76 @@ func peekAction(cmd *cobra.Command, args []string) {
 		}
 
 		fmt.Printf("%s\n", out)
+	}
+}
+
+var (
+	countFlag int
+)
+
+func consumeCommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "consume <queue-url>",
+		Short: "Consume (receive and delete) messages from an SQS queue",
+		Run:   consumeAction,
+	}
+	cmd.Flags().IntVarP(&countFlag, "count", "n", 1, "Number of messages to consume")
+	return &cmd
+}
+
+func consumeAction(cmd *cobra.Command, args []string) {
+	if len(args) < 1 {
+		log.Fatalf("Usage: consume <queue-url>")
+	}
+
+	queueURL := args[0]
+
+	svc := sqs.New(config.Session())
+
+	consumed := 0
+	for consumed < countFlag {
+		remaining := countFlag - consumed
+		maxMessages := int64(10)
+		if remaining < 10 {
+			maxMessages = int64(remaining)
+		}
+
+		result, err := svc.ReceiveMessage(&sqs.ReceiveMessageInput{
+			QueueUrl:              aws.String(queueURL),
+			MaxNumberOfMessages:   aws.Int64(maxMessages),
+			WaitTimeSeconds:       aws.Int64(20),
+			MessageAttributeNames: aws.StringSlice([]string{"All"}),
+			AttributeNames:        aws.StringSlice([]string{"All"}),
+		})
+		if err != nil {
+			log.Fatalf("Error receiving messages: %v", err)
+		}
+
+		if len(result.Messages) == 0 {
+			fmt.Printf("No more messages available. Consumed %d message(s).\n", consumed)
+			break
+		}
+
+		for _, message := range result.Messages {
+			if consumed >= countFlag {
+				break
+			}
+
+			fmt.Printf("%s\n", *message.Body)
+
+			_, err := svc.DeleteMessage(&sqs.DeleteMessageInput{
+				QueueUrl:      aws.String(queueURL),
+				ReceiptHandle: message.ReceiptHandle,
+			})
+			if err != nil {
+				log.Printf("Error deleting message %s: %v", *message.MessageId, err)
+			} else {
+				consumed++
+			}
+		}
+	}
+
+	if consumed == countFlag {
+		fmt.Printf("Successfully consumed %d message(s).\n", consumed)
 	}
 }
